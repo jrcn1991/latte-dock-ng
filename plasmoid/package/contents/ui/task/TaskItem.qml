@@ -5,6 +5,7 @@
 */
 
 import QtQuick
+import QtQuick.Controls as QtControls
 import org.kde.plasma.core as PlasmaCore
 
 import org.kde.latte.core as LatteCore
@@ -73,7 +74,7 @@ AbilityItem.BasicItem {
     readonly property bool visualContainsMouse: hasParabolicTrackingArea
                                                 ? (parabolicAreaDirectContainsMouse || parabolicAreaIsCurrent)
                                                 : taskMouseArea.containsMouse
-    thinTooltipText: {
+    readonly property string taskTooltipText: {
         // Keep tooltips focused on application identity (app name), not window title.
         // This matches dock-style behavior and avoids noisy dynamic titles.
         if (model && model.AppName) {
@@ -97,16 +98,21 @@ AbilityItem.BasicItem {
         return "";
     }
 
+    // Task tooltips are rendered in the task item's own scene so they follow
+    // the parabolic animation exactly. The window-based thin tooltip remains
+    // available to regular applets, but is deliberately not used for tasks.
+    thinTooltipText: ""
+
     readonly property bool thinTooltipActive: abilities && abilities.thinTooltip && abilities.thinTooltip.isEnabled
 
     //! The fallback is only for standalone Plasma usage, where Latte's shared
     //! thin-tooltip host is unavailable. Inside Latte, titleTooltips=false must
     //! disable task tooltips instead of silently switching to the fallback.
-    readonly property bool fallbackTooltipEnabled: !root.inLatteDockEnvironment && !thinTooltipActive
+    readonly property bool fallbackTooltipEnabled: !root.inLatteDockEnvironment || thinTooltipActive
 
     readonly property string fallbackTooltipText: {
-        if (thinTooltipText && thinTooltipText.length > 0) {
-            return thinTooltipText;
+        if (taskTooltipText && taskTooltipText.length > 0) {
+            return taskTooltipText;
         }
 
         if (model && model.GenericName) {
@@ -125,46 +131,10 @@ AbilityItem.BasicItem {
                                                      && fallbackTooltipText.length > 0
                                                      && !windowsPreviewDlg.visible
 
-    //! Fallback tooltip, anchored to this delegate's own tooltip parent.
-    //!
-    //! The former per-item attached tooltip was created as a window-level
-    //! popup, so Qt positioned it against the window content item and it
-    //! stayed put while the pointer moved from icon to icon. The shared dialog
-    //! passed in through `abilities` is re-anchored to the hovered task's
-    //! `tooltipVisualParent`, which is the same mechanism the thin tooltip and
-    //! the window previews use. A per-delegate dialog is deliberately avoided:
-    //! every extra Wayland surface costs a platform window and stutters hover.
-    //!
-    //! Exactly one delegate may own the dialog. During a hover hand-off the
-    //! leaving and the entering delegate are both "containing mouse" for a
-    //! frame or two; without an owner both write the shared dialog, so its text
-    //! and width alternate (71px <-> 150px) and the popup is repositioned to
-    //! whichever delegate happened to write last - which is why the tooltip
-    //! appeared anchored to the wrong icon.
-    onFallbackTooltipShouldShowChanged: {
-        const dlg = abilities ? abilities.fallbackTooltipDialog : null;
-
-        if (!dlg) {
-            return;
-        }
-
-        if (fallbackTooltipShouldShow) {
-            if (!tooltipVisualParent) {
-                return;
-            }
-
-            dlg.owner = taskItem;
-            dlg.tooltipText = fallbackTooltipText;
-            dlg.visualParent = tooltipVisualParent;
-            dlg.scheduleShow(3 * taskItem.animationTime);
-        } else if (dlg.owner === taskItem) {
-            //! Release ownership: the delegate that currently owns the tooltip
-            //! is the only one allowed to hide it, so a leaving delegate can
-            //! never close the tooltip a newly hovered delegate just claimed.
-            dlg.owner = null;
-            dlg.cancelShow();
-        }
-    }
+    QtControls.ToolTip.visible: fallbackTooltipShouldShow
+    QtControls.ToolTip.delay: 120
+    QtControls.ToolTip.timeout: -1
+    QtControls.ToolTip.text: fallbackTooltipText
 
     preserveIndicatorInInitialPosition: inBouncingAnimation || inAttentionBuiltinAnimation || inNewWindowBuiltinAnimation
 

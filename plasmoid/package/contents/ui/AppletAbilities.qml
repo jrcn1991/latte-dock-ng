@@ -13,13 +13,6 @@ AbilityClient.AppletAbilities {
     id: _abilityContainer
     property QtObject tasksModel: null
 
-    //! Shared app-name tooltip used when Latte's thin tooltip is inactive.
-    //! TaskItem must not reach it through `root`: a component file resolves
-    //! `root` in the containment scope, not in this plasmoid's scope. Passing
-    //! the dialog through the abilities object keeps a single instance for all
-    //! delegates without adding a Wayland surface per icon.
-    property QtObject fallbackTooltipDialog: null
-
     readonly property alias launchers: _launchers
 
     Ability.Launchers {

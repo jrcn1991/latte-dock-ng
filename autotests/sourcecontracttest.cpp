@@ -3705,58 +3705,20 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(taskItem.open(QFile::ReadOnly));
     const QString taskItemSource = QString::fromUtf8(taskItem.readAll());
 
-    // titleTooltips=false must disable all task tooltips inside Latte. The
-    // fallback remains available only for standalone Plasma usage, where the
-    // Latte thin-tooltip host does not exist.
+    // Task tooltips stay in the delegate's QML scene so their anchor follows
+    // every parabolic animation frame. Inside Latte, the host's titleTooltips
+    // state controls visibility; standalone Plasma keeps the fallback.
+    QVERIFY(taskItemSource.contains(QStringLiteral("thinTooltipText: \"\"")));
     QVERIFY(taskItemSource.contains(QStringLiteral(
-        "fallbackTooltipEnabled: !root.inLatteDockEnvironment && !thinTooltipActive")));
+        "fallbackTooltipEnabled: !root.inLatteDockEnvironment || thinTooltipActive")));
     QVERIFY(taskItemSource.contains(QStringLiteral("fallbackTooltipShouldShow")));
-
-    // The attached per-item tooltip was created as a window-level popup, so Qt
-    // anchored it to the window content item and it did not follow the pointer
-    // from icon to icon. The fallback must instead re-anchor Latte's shared
-    // dialog through visualParent, exactly like the thin tooltip does.
-    QVERIFY(!taskItemSource.contains(QStringLiteral("QtControls.ToolTip")));
-    QVERIFY(taskItemSource.contains(QStringLiteral("dlg.visualParent = tooltipVisualParent")));
-
-    // The three writes must be ordered (text, anchor, then scheduled show).
-    const qsizetype textWrite = taskItemSource.indexOf(QStringLiteral(
-        "dlg.tooltipText = fallbackTooltipText;"));
-    const qsizetype anchorWrite = taskItemSource.indexOf(QStringLiteral(
-        "dlg.visualParent = tooltipVisualParent;"));
-    const qsizetype visibleWrite = taskItemSource.indexOf(QStringLiteral(
-        "dlg.scheduleShow(3 * taskItem.animationTime);"));
-    QVERIFY(textWrite >= 0);
-    QVERIFY(anchorWrite > textWrite);
-    QVERIFY(visibleWrite > anchorWrite);
-
-    // Every task delegate shares one dialog. During a hover hand-off the
-    // leaving and the entering delegate both report "containing mouse" for a
-    // frame or two; if both may write, the shared dialog alternates between
-    // two texts and two anchors, so the tooltip shows the wrong app name at
-    // the wrong icon. Ownership makes the hand-off atomic: the new delegate
-    // claims the dialog and only the current owner may hide it.
-    QVERIFY(taskItemSource.contains(QStringLiteral("dlg.owner = taskItem;")));
-    QVERIFY(taskItemSource.contains(QStringLiteral("dlg.owner === taskItem")));
-    QVERIFY(taskItemSource.contains(QStringLiteral("dlg.owner = null;")));
-
+    QVERIFY(taskItemSource.contains(QStringLiteral("QtControls.ToolTip.visible:")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("QtControls.ToolTip.text: fallbackTooltipText")));
 
     QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
     QVERIFY(mainQml.open(QFile::ReadOnly));
     const QString mainSource = QString::fromUtf8(mainQml.readAll());
-
-    // Exactly one shared dialog must back every task delegate; a per-delegate
-    // dialog would add a Wayland surface per icon and stutter hover.
-    QVERIFY(mainSource.contains(QStringLiteral("id: fallbackTooltipDlg")));
-    QVERIFY(mainSource.count(QStringLiteral("id: fallbackTooltipDlg")) == 1);
-    QVERIFY(mainSource.contains(QStringLiteral("property string tooltipText")));
-    QVERIFY(mainSource.contains(QStringLiteral("fallbackTooltipDialog: fallbackTooltipDlg")));
-    QVERIFY(mainSource.contains(QStringLiteral("function scheduleShow(animationDuration)")));
-    QVERIFY(mainSource.contains(QStringLiteral(
-        "fallbackTooltipShowTimer.interval = Math.max(60, animationDuration)")));
-    QVERIFY(mainSource.contains(QStringLiteral("id: fallbackTooltipShowTimer")));
-    QVERIFY(mainSource.contains(QStringLiteral(
-        "readonly property bool inLatteDockEnvironment:")));
+    QVERIFY(!mainSource.contains(QStringLiteral("id: fallbackTooltipDlg")));
 
     QFile defaultLayout(QStringLiteral(
         LATTE_SOURCE_DIR "/shell/package/contents/templates/Default.layout.latte"));
@@ -3768,44 +3730,6 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(defaultDock.open(QFile::ReadOnly));
     QVERIFY(QString::fromUtf8(defaultDock.readAll()).contains(QStringLiteral("titleTooltips=true")));
 
-    // The dialog tracks which delegate currently displays through it, so a
-    // hover hand-off cannot let two delegates drive the same popup.
-    QVERIFY(mainSource.contains(QStringLiteral("property QtObject owner: null")));
-
-    // The dialog is positioned from its own size(), which stays 0x0 for a bare
-    // Label until the surface is mapped. With a 0-width popup the centering
-    // term collapses and the tooltip lands half its width off-centre, so the
-    // main item must be the same RowLayout wrapper the thin tooltip host uses.
-    QVERIFY(mainSource.contains(QStringLiteral("mainItem: RowLayout {")));
-
-    // TaskItem is a component file, so `root` there resolves in the containment
-    // scope and does NOT expose this plasmoid's dialog.
-    QVERIFY(!taskItemSource.contains(QStringLiteral("root.fallbackTooltipDlg")));
-
-    // A tooltip that is only positioned from the host's
-    // anchoredTooltipPositionChanged() signal keeps the previous anchor's
-    // coordinates when the anchor switches, and it is first positioned while
-    // its own size is still 0x0. The dialog must therefore reposition on every
-    // re-anchor, on show, and once its real size is known.
-    QFile dialogCpp(QStringLiteral(LATTE_SOURCE_DIR "/declarativeimports/core/dialog.cpp"));
-    QVERIFY(dialogCpp.open(QFile::ReadOnly));
-    const QString dialogSource = QString::fromUtf8(dialogCpp.readAll());
-
-    QVERIFY(dialogSource.contains(QStringLiteral("void Dialog::repositionIfVisible()")));
-    QVERIFY(dialogSource.contains(QStringLiteral(
-        "QMetaObject::invokeMethod(this, &Dialog::repositionIfVisible, Qt::QueuedConnection)")));
-    QVERIFY(dialogSource.contains(QStringLiteral("&QQuickWindow::visibleChanged")));
-    QVERIFY(dialogSource.contains(QStringLiteral("&QQuickWindow::widthChanged")));
-    QVERIFY(dialogSource.contains(QStringLiteral("&QQuickWindow::heightChanged")));
-
-    // A Plasma shell surface ignores QWindow::setPosition() under Wayland: the
-    // popup keeps the coordinates it was first mapped at while QWindow::x()
-    // reports the requested value, so the tooltip never actually moved.
-    // Positioning must go through the base class, which owns the plasma shell
-    // plumbing that can move such a surface.
-    QVERIFY(dialogSource.contains(QStringLiteral("void Dialog::adjustGeometry(const QRect &geom)")));
-    QVERIFY(dialogSource.contains(QStringLiteral("PlasmaQuick::Dialog::adjustGeometry(geom)")));
-    QVERIFY(!dialogSource.contains(QStringLiteral("setPosition(popupPosition(")));
 }
 
 void SourceContractTest::thinTooltipHandlesMissingTextAndRepositionsAfterShowing()
