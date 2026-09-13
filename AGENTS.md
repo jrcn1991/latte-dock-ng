@@ -123,6 +123,14 @@ When testing changes to latte-dock-ng, follow this exact workflow:
 - **GitHub proxy**: if git push/ls-remote hangs, retry through the local HTTP
   proxy configured in the shell environment (machine-local; exact address is
   not committed to the repo).
+- **Wayland popup positioning (hard rule)**: never position a
+  `LatteCore.Dialog` / plasma popup with a raw `QWindow::setPosition()`. For a
+  Plasma shell surface the compositor ignores it and keeps the position the
+  popup was first mapped at, while `x()` still reports the requested value.
+  Always route through `PlasmaQuick::Dialog::adjustGeometry()`
+  (`declarativeimports/core/dialog.cpp`). A stale `x()` in a diagnostic means
+  the compositor ignored the request — not that the position math is wrong.
 - **Detailed memory**: release workflow, known issues (appmenu empty slot,
-  knscompat Badge qmldir, blur ghosting fix, hover-preview stutter research)
-  and cross-distro compatibility notes are in `CLAUDE.md`.
+  knscompat Badge qmldir, blur ghosting fix, hover-preview stutter research,
+  task-tooltip anchoring, runtime theme following) and cross-distro
+  compatibility notes are in `CLAUDE.md`.

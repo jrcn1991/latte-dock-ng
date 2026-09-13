@@ -172,3 +172,69 @@ Next approach: C++ signal (`currentParabolicItemChanged`) → QML-invokable slot
 or investigate `PlasmaCore.Dialog` vs `LatteCore.Dialog`. Key files:
 `plasmoid/package/contents/ui/main.qml:438` (windowsPreviewDlg),
 `app/view/parabolic.h/cpp`, `TaskItem.qml:531` (showPreviewWindow).
+
+### Task tooltip not following the hovered icon (FIXED)
+Symptom: the app-name tooltip stayed beside a previously hovered task, or was
+drawn with its left edge on the icon centre instead of being centred on it.
+Three independent causes stacked on top of each other; each one masked the next,
+so fixing only the first two still looked broken.
+
+**1. Wrong popup type.** The fallback used `QtControls.ToolTip` *attached* to the
+TaskItem delegate. Qt creates that as a window-level popup positioned against the
+window content item, so it never tracked the icons. Fix: route it through one
+shared `LatteCore.Dialog` and set `visualParent` to the hovered task's
+`tooltipVisualParent` - the same anchoring the thin tooltip host and
+`windowsPreviewDlg` already use. `tooltipVisualParent` always exists because
+`_parabolicItem` (and its `TitleTooltipParent`) is instantiated unconditionally
+inside the Flow, not behind the parabolic loader.
+
+**2. Wayland ignores `QWindow::setPosition()`.** For a Plasma shell surface the
+compositor keeps the position the popup was first mapped at, while
+`QWindow::x()` happily reports the requested value. The centering math was
+provably correct (`anchor=840 -> decided=805`) yet the window never moved.
+Fix: `Latte::Quick::Dialog` overrides `PlasmaQuick::Dialog::adjustGeometry()`
+and sends every reposition through it. **Never position these popups with a raw
+`setPosition()`.** `PlasmaQuick/PlasmaShellWaylandIntegration` looks like the
+obvious API but is a private header needing `qwayland-plasma-shell.h`, which is
+not on the include path - `adjustGeometry()` is the usable public hook.
+
+**3. Popup positioned before it has a size.** `size()` is `0x0` until the popup
+is mapped, which collapses the centering term to `x = anchor.x`. Fix: `mainItem`
+must be a `RowLayout` wrapper with `Layout.fillWidth/fillHeight: true` (exactly
+what the thin tooltip host uses); a bare `Label` reports no usable size. Also
+re-run positioning on `widthChanged`/`heightChanged`/`visibleChanged`.
+
+**4. Two delegates driving one dialog.** All delegates share the dialog. During a
+hover hand-off the leaving and the entering delegate both report
+"containing mouse" for a frame, so both wrote text + anchor and the popup
+alternated between two app names and two positions - whichever wrote last won,
+usually not the hovered icon. This shows up in diagnostics as the *same anchor*
+with *two different popup widths* (e.g. `71x30` vs `150x30`). Fix: the dialog
+exposes `owner`; a delegate claims it before writing and only the current owner
+may hide it.
+
+Diagnostic recipe (keep it when touching tooltip code):
+`/tmp/latte-ng.log` with `--debug`, add a temporary `qWarning` in
+`Latte::Quick::Dialog::repositionIfVisible()` logging
+`anchor / decided / size / prevX / x()` plus a QML `diagName` property, then
+hover 2-3 icons. Reading the *applied* position (`x()`) rather than only the
+computed one is what exposed cause 2; a repeatedly stale `x()` means the
+compositor ignored the request, not that the math is wrong.
+
+Key files: `declarativeimports/core/dialog.cpp`,
+`plasmoid/package/contents/ui/main.qml` (`fallbackTooltipDlg`),
+`plasmoid/package/contents/ui/AppletAbilities.qml`,
+`plasmoid/package/contents/ui/task/TaskItem.qml`.
+
+### Dock does not follow the system theme (FIXED)
+`KDE_COLOR_SCHEME_PATH` was pinned once in the `View` constructor and never
+refreshed, so switching light/dark in Plasma's settings left the dock on the
+startup palette. The system scheme is the shared `kdeglobals` file, whose *path*
+is constant while its *contents* change, so a path comparison cannot gate the
+update - re-polish on every `Schemes::defaultSchemeChanged` notification.
+Fix: `View::updateSystemColorScheme(bool rePolish)`.
+Note: reading `breeze-dark` as the desktop theme is *correct* for a
+Breeze Twilight global theme (light color scheme + dark panel theme). Probe both
+values before calling a theme mismatch a bug:
+`kreadconfig6 --file plasmarc --group Theme --key name` and
+`kreadconfig6 --file kdeglobals --group General --key ColorScheme`.
