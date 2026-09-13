@@ -69,7 +69,16 @@ AbilityDefinition.ThinTooltip {
             _tooltipDialog.visible = false;
         }
 
+        const anchorChanged = _thinTooltip.currentVisualParent
+                              && _thinTooltip.currentVisualParent !== visualParent;
+
         _hideTimer.stop();
+        if (anchorChanged && _tooltipDialog.visible) {
+            // A mapped Wayland tooltip cannot be moved without remapping it.
+            // Hide it now and let the existing show timer remap it after the
+            // parabolic hand-off settles, avoiding geometry work per frame.
+            _tooltipDialog.visible = false;
+        }
         _thinTooltip.currentVisualParent = visualParent;
         _tooltipDialog.visualParent = visualParent;
 
@@ -77,7 +86,7 @@ AbilityDefinition.ThinTooltip {
         _thinTooltip.currentText = fixedDisplayText;
 
         if (!_tooltipDialog.visible && !showIsBlocked) {
-            _showTimer.start();
+            _showTimer.restart();
         }
     }
 
@@ -101,7 +110,7 @@ AbilityDefinition.ThinTooltip {
     //! Show Delayer Timer
     Timer {
         id: _showTimer
-        interval: 100
+        interval: 60
         onTriggered: {
             if (_thinTooltip.currentVisualParent) {
                 _tooltipDialog.visible = true;

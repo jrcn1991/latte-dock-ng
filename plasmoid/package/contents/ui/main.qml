@@ -483,6 +483,17 @@ PlasmoidItem {
         //! the newly hovered delegate has just claimed.
         property QtObject owner: null
 
+        function scheduleShow(animationDuration) {
+            visible = false;
+            fallbackTooltipShowTimer.interval = Math.max(60, animationDuration);
+            fallbackTooltipShowTimer.restart();
+        }
+
+        function cancelShow() {
+            fallbackTooltipShowTimer.stop();
+            visible = false;
+        }
+
         //! A RowLayout wrapper is required, not a bare Label: the dialog is
         //! positioned from its own size(), which stays 0x0 for a plain Label
         //! until the surface is mapped. With a 0-width popup the centering term
@@ -499,6 +510,16 @@ PlasmoidItem {
                 Layout.topMargin: 2
                 Layout.bottomMargin: 2
                 text: fallbackTooltipDlg.tooltipText
+            }
+        }
+    }
+
+    Timer {
+        id: fallbackTooltipShowTimer
+        interval: 60
+        onTriggered: {
+            if (fallbackTooltipDlg.owner && fallbackTooltipDlg.visualParent) {
+                fallbackTooltipDlg.visible = true;
             }
         }
     }

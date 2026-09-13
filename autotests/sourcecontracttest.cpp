@@ -3719,13 +3719,13 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(!taskItemSource.contains(QStringLiteral("QtControls.ToolTip")));
     QVERIFY(taskItemSource.contains(QStringLiteral("dlg.visualParent = tooltipVisualParent")));
 
-    // The three writes must be ordered (text, anchor, then visibility).
+    // The three writes must be ordered (text, anchor, then scheduled show).
     const qsizetype textWrite = taskItemSource.indexOf(QStringLiteral(
         "dlg.tooltipText = fallbackTooltipText;"));
     const qsizetype anchorWrite = taskItemSource.indexOf(QStringLiteral(
         "dlg.visualParent = tooltipVisualParent;"));
     const qsizetype visibleWrite = taskItemSource.indexOf(QStringLiteral(
-        "dlg.visible = true;"));
+        "dlg.scheduleShow(3 * taskItem.animationTime);"));
     QVERIFY(textWrite >= 0);
     QVERIFY(anchorWrite > textWrite);
     QVERIFY(visibleWrite > anchorWrite);
@@ -3751,6 +3751,10 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(mainSource.count(QStringLiteral("id: fallbackTooltipDlg")) == 1);
     QVERIFY(mainSource.contains(QStringLiteral("property string tooltipText")));
     QVERIFY(mainSource.contains(QStringLiteral("fallbackTooltipDialog: fallbackTooltipDlg")));
+    QVERIFY(mainSource.contains(QStringLiteral("function scheduleShow(animationDuration)")));
+    QVERIFY(mainSource.contains(QStringLiteral(
+        "fallbackTooltipShowTimer.interval = Math.max(60, animationDuration)")));
+    QVERIFY(mainSource.contains(QStringLiteral("id: fallbackTooltipShowTimer")));
 
     // The dialog tracks which delegate currently displays through it, so a
     // hover hand-off cannot let two delegates drive the same popup.
@@ -3776,6 +3780,8 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     const QString dialogSource = QString::fromUtf8(dialogCpp.readAll());
 
     QVERIFY(dialogSource.contains(QStringLiteral("void Dialog::repositionIfVisible()")));
+    QVERIFY(dialogSource.contains(QStringLiteral(
+        "QMetaObject::invokeMethod(this, &Dialog::repositionIfVisible, Qt::QueuedConnection)")));
     QVERIFY(dialogSource.contains(QStringLiteral("&QQuickWindow::visibleChanged")));
     QVERIFY(dialogSource.contains(QStringLiteral("&QQuickWindow::widthChanged")));
     QVERIFY(dialogSource.contains(QStringLiteral("&QQuickWindow::heightChanged")));
@@ -3804,6 +3810,8 @@ void SourceContractTest::thinTooltipHandlesMissingTextAndRepositionsAfterShowing
     QVERIFY(thinTooltipSource.contains(QStringLiteral("clearTooltip();")));
     QVERIFY(!thinTooltipSource.contains(QStringLiteral("Qt.callLater")));
     QVERIFY(!thinTooltipSource.contains(QStringLiteral("_tooltipDialog.updateGeometry()")));
+    QVERIFY(thinTooltipSource.contains(QStringLiteral("const anchorChanged =")));
+    QVERIFY(thinTooltipSource.contains(QStringLiteral("_showTimer.restart();")));
 
     // A show() request whose text is not resolved yet must NOT clear the
     // tooltip: the visual parent it carries still identifies the hovered

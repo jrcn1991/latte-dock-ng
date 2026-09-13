@@ -131,20 +131,10 @@ void Dialog::onVisualParentChanged()
         return;
     }
 
-    const QByteArray normalizedSig = QMetaObject::normalizedSignature("anchoredTooltipPositionChanged()");
-    const int signalIndex = visualParent()->metaObject()->indexOfSignal(normalizedSig.constData());
-    const int slotIndex = metaObject()->indexOfSlot("updateGeometry()");
-
-    if (signalIndex != -1 && slotIndex != -1) {
-        m_visualParentConnections[0] = QMetaObject::connect(visualParent(), signalIndex, this, slotIndex);
-    }
-
-    //! Re-anchor immediately. `anchoredTooltipPositionChanged()` only fires
-    //! while the host item is actively tracking the pointer, so relying on it
-    //! alone leaves the popup at the previous visual parent's position whenever
-    //! the tooltip switches anchors (e.g. hovering task to task with the
-    //! parabolic tracking area inactive).
-    repositionIfVisible();
+    //! PlasmaQuick finishes updating its internal popup anchor after emitting
+    //! visualParentChanged(). Queue one reposition so it uses the new anchor,
+    //! without following the high-frequency parabolic mouse-position signal.
+    QMetaObject::invokeMethod(this, &Dialog::repositionIfVisible, Qt::QueuedConnection);
 }
 
 void Dialog::updateGeometry()

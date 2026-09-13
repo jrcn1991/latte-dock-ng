@@ -158,13 +158,13 @@ AbilityItem.BasicItem {
             dlg.owner = taskItem;
             dlg.tooltipText = fallbackTooltipText;
             dlg.visualParent = tooltipVisualParent;
-            dlg.visible = true;
+            dlg.scheduleShow(3 * taskItem.animationTime);
         } else if (dlg.owner === taskItem) {
             //! Release ownership: the delegate that currently owns the tooltip
             //! is the only one allowed to hide it, so a leaving delegate can
             //! never close the tooltip a newly hovered delegate just claimed.
             dlg.owner = null;
-            dlg.visible = false;
+            dlg.cancelShow();
         }
     }
 
