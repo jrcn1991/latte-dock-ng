@@ -6,6 +6,7 @@
 #include "dialog.h"
 
 // Qt
+#include <QGuiApplication>
 #include <QScreen>
 #include <QWindow>
 
@@ -28,6 +29,46 @@ Dialog::Dialog(QQuickItem *parent)
     : PlasmaQuick::Dialog(parent)
 {
     connect(this, &PlasmaQuick::Dialog::visualParentChanged, this, &Dialog::onVisualParentChanged);
+
+    //! A tooltip is normally shown right after being re-anchored, but the
+    //! anchor may also move while the popup is still hidden. Positioning on
+    //! show guarantees the popup never appears at a stale anchor position.
+    connect(this, &QQuickWindow::visibleChanged, this, [this]() {
+        if (isVisible()) {
+            updateGeometry();
+        }
+    });
+
+    //! The popup is positioned from its own size, which is still 0x0 on the
+    //! first update: the main item has not been laid out yet. Centering then
+    //! collapses to `anchor.x` and the tooltip is drawn half its width off to
+    //! the side. Re-running the calculation once the real size arrives keeps
+    //! the popup centered on the anchor.
+    connect(this, &QQuickWindow::widthChanged, this, [this]() {
+        repositionIfVisible();
+    });
+    connect(this, &QQuickWindow::heightChanged, this, [this]() {
+        repositionIfVisible();
+    });
+}
+
+void Dialog::repositionIfVisible()
+{
+    if (isVisible() && visualParent()) {
+        adjustGeometry(QRect(popupPosition(visualParent(), size()), size()));
+    }
+}
+
+void Dialog::adjustGeometry(const QRect &geom)
+{
+    //! Route every positioning request through the base implementation.
+    //!
+    //! A plain QWindow::setPosition() is a no-op for Plasma shell surfaces
+    //! under Wayland: the popup keeps the position it was first mapped at
+    //! while QWindow::x() reports whatever was requested, so the tooltip looked
+    //! pinned beside the previously hovered icon. PlasmaQuick::Dialog owns the
+    //! plasma shell plumbing that actually moves such a surface.
+    PlasmaQuick::Dialog::adjustGeometry(geom);
 }
 
 bool Dialog::containsMouse() const
@@ -97,12 +138,19 @@ void Dialog::onVisualParentChanged()
     if (signalIndex != -1 && slotIndex != -1) {
         m_visualParentConnections[0] = QMetaObject::connect(visualParent(), signalIndex, this, slotIndex);
     }
+
+    //! Re-anchor immediately. `anchoredTooltipPositionChanged()` only fires
+    //! while the host item is actively tracking the pointer, so relying on it
+    //! alone leaves the popup at the previous visual parent's position whenever
+    //! the tooltip switches anchors (e.g. hovering task to task with the
+    //! parabolic tracking area inactive).
+    repositionIfVisible();
 }
 
 void Dialog::updateGeometry()
 {
     if (visualParent()) {
-        setPosition(popupPosition(visualParent(), size()));
+        adjustGeometry(QRect(popupPosition(visualParent(), size()), size()));
     }
 }
 
