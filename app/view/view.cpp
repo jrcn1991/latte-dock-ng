@@ -13,6 +13,7 @@
 #include "positioner.h"
 #include "visibilitymanager.h"
 #include "../wm/schemecolors.h"
+#include "../wm/tracker/schemes.h"
 #include "../apptypes.h"
 #include "settings/primaryconfigview.h"
 #include "settings/viewsettingsfactory.h"
@@ -165,10 +166,15 @@ View::View(Plasma::Corona *corona, QScreen *targetScreen)
     setFlags(flags);
 
     // Pin color scheme before screen assignment
-    const QString appScheme = Latte::WindowSystem::SchemeColors::possibleSchemeFile(QStringLiteral("kdeglobals"));
+    updateSystemColorScheme(false);
 
-    if (!appScheme.isEmpty()) {
-        setProperty("KDE_COLOR_SCHEME_PATH", appScheme);
+    //! Follow the system color scheme for the dock's own window while the
+    //! session is running. `KDE_COLOR_SCHEME_PATH` is consumed by Qt/Kirigami
+    //! when a window is polished, so it must be refreshed and the window
+    //! re-polished whenever Plasma's default scheme changes.
+    if (m_corona && m_corona->wm() && m_corona->wm()->schemesTracker()) {
+        connect(m_corona->wm()->schemesTracker(), &WindowSystem::Tracker::Schemes::defaultSchemeChanged,
+                this, [this]() { updateSystemColorScheme(true); });
     }
 
     if (targetScreen) {
@@ -2045,6 +2051,42 @@ void View::verticalUnityViewHasFocus()
 //! END: WORKAROUND
 
 //!BEGIN configuration functions
+void View::updateSystemColorScheme(bool rePolish)
+{
+    if (rePolish) {
+        const QString appScheme = Latte::WindowSystem::SchemeColors::possibleSchemeFile(QStringLiteral("kdeglobals"));
+
+        if (!appScheme.isEmpty()) {
+            setProperty("KDE_COLOR_SCHEME_PATH", appScheme);
+        }
+
+        qCDebug(latteView) << "dock view system color scheme changed, reapplying palette...";
+
+        //! The system scheme is usually the shared kdeglobals file, whose path
+        //! never changes while its contents do. Re-polishing is therefore the
+        //! only thing that can propagate a light/dark switch to the dock, and
+        //! it must run on every notification instead of only on path changes.
+        if (QQuickItem *rootItem = contentItem()) {
+            rootItem->polish();
+            rootItem->update();
+        } else {
+            update();
+        }
+
+        return;
+    }
+
+    const QString appScheme = Latte::WindowSystem::SchemeColors::possibleSchemeFile(QStringLiteral("kdeglobals"));
+
+    if (appScheme.isEmpty() || property("KDE_COLOR_SCHEME_PATH").toString() == appScheme) {
+        return;
+    }
+
+    qCDebug(latteView) << "dock view color scheme pinned ::: " << appScheme;
+
+    setProperty("KDE_COLOR_SCHEME_PATH", appScheme);
+}
+
 void View::saveConfig()
 {
     if (!this->containment()) {

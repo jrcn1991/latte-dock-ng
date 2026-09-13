@@ -369,6 +369,13 @@ private Q_SLOTS:
     void restoreConfig();
     void saveConfig();
 
+    //! Re-pins the dock window to the current system color scheme. Without
+    //! this the scheme captured in the constructor would freeze the panel on
+    //! the scheme that was active at startup, so switching light/dark in
+    //! Plasma's settings would leave the dock on the old palette. Runtime
+    //! updates pass rePolish=true so the new palette is applied immediately.
+    void updateSystemColorScheme(bool rePolish);
+
     void updatePlasmoidDrag();
 
 private:
