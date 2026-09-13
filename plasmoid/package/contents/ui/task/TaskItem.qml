@@ -99,12 +99,10 @@ AbilityItem.BasicItem {
 
     readonly property bool thinTooltipActive: abilities && abilities.thinTooltip && abilities.thinTooltip.isEnabled
 
-    //! The Qt Controls tooltip is the only hover hint whenever Latte's own
-    //! thin tooltip is not active. That covers both standalone Plasma usage
-    //! and Latte docks whose "titleTooltips" setting is disabled: gating this
-    //! on the Latte environment alone would leave such docks with no tooltip
-    //! at all while hovering their tasks.
-    readonly property bool fallbackTooltipEnabled: !thinTooltipActive
+    //! The fallback is only for standalone Plasma usage, where Latte's shared
+    //! thin-tooltip host is unavailable. Inside Latte, titleTooltips=false must
+    //! disable task tooltips instead of silently switching to the fallback.
+    readonly property bool fallbackTooltipEnabled: !root.inLatteDockEnvironment && !thinTooltipActive
 
     readonly property string fallbackTooltipText: {
         if (thinTooltipText && thinTooltipText.length > 0) {

@@ -3703,13 +3703,11 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(taskItem.open(QFile::ReadOnly));
     const QString taskItemSource = QString::fromUtf8(taskItem.readAll());
 
-    // titleTooltips=false disables the Latte thin tooltip. Without an active
-    // thin tooltip the Qt Controls fallback is the only hover hint, both when
-    // the tasks plasmoid runs standalone and inside a Latte dock whose user
-    // disabled title tooltips. Gating it on the Latte environment as well
-    // would leave such docks with no tooltip at all.
+    // titleTooltips=false must disable all task tooltips inside Latte. The
+    // fallback remains available only for standalone Plasma usage, where the
+    // Latte thin-tooltip host does not exist.
     QVERIFY(taskItemSource.contains(QStringLiteral(
-        "fallbackTooltipEnabled: !thinTooltipActive")));
+        "fallbackTooltipEnabled: !root.inLatteDockEnvironment && !thinTooltipActive")));
     QVERIFY(taskItemSource.contains(QStringLiteral("fallbackTooltipShouldShow")));
 
     // The attached per-item tooltip was created as a window-level popup, so Qt
@@ -3755,6 +3753,18 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(mainSource.contains(QStringLiteral(
         "fallbackTooltipShowTimer.interval = Math.max(60, animationDuration)")));
     QVERIFY(mainSource.contains(QStringLiteral("id: fallbackTooltipShowTimer")));
+    QVERIFY(mainSource.contains(QStringLiteral(
+        "readonly property bool inLatteDockEnvironment:")));
+
+    QFile defaultLayout(QStringLiteral(
+        LATTE_SOURCE_DIR "/shell/package/contents/templates/Default.layout.latte"));
+    QVERIFY(defaultLayout.open(QFile::ReadOnly));
+    QVERIFY(QString::fromUtf8(defaultLayout.readAll()).contains(QStringLiteral("titleTooltips=true")));
+
+    QFile defaultDock(QStringLiteral(
+        LATTE_SOURCE_DIR "/shell/package/contents/templates/Default Dock.view.latte"));
+    QVERIFY(defaultDock.open(QFile::ReadOnly));
+    QVERIFY(QString::fromUtf8(defaultDock.readAll()).contains(QStringLiteral("titleTooltips=true")));
 
     // The dialog tracks which delegate currently displays through it, so a
     // hover hand-off cannot let two delegates drive the same popup.
