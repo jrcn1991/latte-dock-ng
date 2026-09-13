@@ -269,7 +269,7 @@ QList<QAction *> Menu::contextualActions()
         }
     }
 
-    m_actionsAlwaysShown = m_data[ACTIONSALWAYSSHOWN].split(QStringLiteral(";;"));
+    m_actionsAlwaysShown = m_data.value(ACTIONSALWAYSSHOWN).split(QStringLiteral(";;"));
 
     updateViewData();
 
@@ -285,7 +285,7 @@ QList<QAction *> Menu::contextualActions()
 
     m_actions[Latte::Data::ContextMenu::EXPORTVIEWTEMPLATEACTION]->setText(i18n("E&xport Dock as Template"));
 
-    m_activeLayoutNames = m_data[ACTIVELAYOUTSINDEX].split(QStringLiteral(";;"));
+    m_activeLayoutNames = m_data.value(ACTIVELAYOUTSINDEX).split(QStringLiteral(";;"));
     m_actions[Latte::Data::ContextMenu::MOVEVIEWACTION]->setText(i18n("&Move Dock To Layout"));
 
     m_actions[Latte::Data::ContextMenu::REMOVEVIEWACTION]->setText(i18n("&Remove Dock"));
@@ -352,21 +352,21 @@ void Menu::populateLayouts()
 {
     m_switchLayoutsMenu->clear();
 
-    LayoutsMemoryUsage memoryUsage = static_cast<LayoutsMemoryUsage>((m_data[MEMORYINDEX]).toInt());
-    QStringList activeNames = m_data[ACTIVELAYOUTSINDEX].split(QStringLiteral(";;"));
-    QStringList currentNames = m_data[CURRENTLAYOUTSINDEX].split(QStringLiteral(";;"));
+    LayoutsMemoryUsage memoryUsage = static_cast<LayoutsMemoryUsage>(m_data.value(MEMORYINDEX).toInt());
+    QStringList activeNames = m_data.value(ACTIVELAYOUTSINDEX).split(QStringLiteral(";;"));
+    QStringList currentNames = m_data.value(CURRENTLAYOUTSINDEX).split(QStringLiteral(";;"));
 
     QList<LayoutInfo> layoutsmenulist;
 
-    QStringList layoutsdata = m_data[LAYOUTMENUINDEX].split(QStringLiteral(";;"));
+    QStringList layoutsdata = m_data.value(LAYOUTMENUINDEX).split(QStringLiteral(";;"));
 
     for (int i = 0; i < layoutsdata.count(); ++i) {
         QStringList cdata = layoutsdata[i].split(QStringLiteral("**"));
 
         LayoutInfo info;
-        info.layoutName = cdata[0];
-        info.isBackgroundFileIcon = cdata[1].toInt();
-        info.iconName = cdata[2];
+        info.layoutName = cdata.value(0);
+        info.isBackgroundFileIcon = cdata.value(1).toInt();
+        info.iconName = cdata.value(2);
 
         layoutsmenulist << info;
     }
@@ -410,24 +410,24 @@ void Menu::populateMoveToLayouts()
 {
     m_moveToLayoutMenu->clear();
 
-    LayoutsMemoryUsage memoryUsage = static_cast<LayoutsMemoryUsage>((m_data[MEMORYINDEX]).toInt());
+    LayoutsMemoryUsage memoryUsage = static_cast<LayoutsMemoryUsage>(m_data.value(MEMORYINDEX).toInt());
 
     if (memoryUsage == LayoutsMemoryUsage::MultipleLayouts) {
-        QStringList activeNames = m_data[ACTIVELAYOUTSINDEX].split(QStringLiteral(";;"));
-        QStringList currentNames = m_data[CURRENTLAYOUTSINDEX].split(QStringLiteral(";;"));
-        QString viewLayoutName = m_data[VIEWLAYOUTINDEX];
+        QStringList activeNames = m_data.value(ACTIVELAYOUTSINDEX).split(QStringLiteral(";;"));
+        QStringList currentNames = m_data.value(CURRENTLAYOUTSINDEX).split(QStringLiteral(";;"));
+        QString viewLayoutName = m_data.value(VIEWLAYOUTINDEX);
 
         QList<LayoutInfo> layoutsmenulist;
 
-        QStringList layoutsdata = m_data[LAYOUTMENUINDEX].split(QStringLiteral(";;"));
+        QStringList layoutsdata = m_data.value(LAYOUTMENUINDEX).split(QStringLiteral(";;"));
 
         for (int i = 0; i < layoutsdata.count(); ++i) {
             QStringList cdata = layoutsdata[i].split(QStringLiteral("**"));
 
             LayoutInfo info;
-            info.layoutName = cdata[0];
-            info.isBackgroundFileIcon = cdata[1].toInt();
-            info.iconName = cdata[2];
+            info.layoutName = cdata.value(0);
+            info.isBackgroundFileIcon = cdata.value(1).toInt();
+            info.iconName = cdata.value(2);
 
             layoutsmenulist << info;
         }
@@ -451,9 +451,9 @@ void Menu::populateMoveToLayouts()
 
 void Menu::updateViewData()
 {
-    QStringList vdata = m_data[VIEWTYPEINDEX].split(QStringLiteral(";;"));
-    m_view.isCloned = vdata[1].toInt();
-    m_view.clonesCount = vdata[2].toInt();
+    QStringList vdata = m_data.value(VIEWTYPEINDEX).split(QStringLiteral(";;"));
+    m_view.isCloned = vdata.value(1).toInt();
+    m_view.clonesCount = vdata.value(2).toInt();
 }
 
 void Menu::populateViewTemplates()
