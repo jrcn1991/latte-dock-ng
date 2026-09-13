@@ -10,6 +10,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 
 import org.kde.kirigami as Kirigami
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.core as PlasmaCore
 import org.kde.ksvg as KSvg
 import org.kde.plasma.plasmoid
@@ -462,6 +463,46 @@ PlasmoidItem {
 
     ////BEGIN interfaces
 
+    //! Shared app-name tooltip used when Latte's thin tooltip is inactive
+    //! ("titleTooltips" disabled, or running standalone in Plasma). One dialog
+    //! serves every task: TaskItem only re-anchors it through `visualParent`,
+    //! so hovering never creates an extra Wayland surface. Setting
+    //! `visualParent` is what makes the tooltip follow the hovered icon.
+    LatteCore.Dialog {
+        id: fallbackTooltipDlg
+        type: PlasmaCore.Dialog.Tooltip
+        flags: Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus | Qt.ToolTip
+        location: root.location
+        edge: root.location
+        visible: false
+
+        property string tooltipText: ""
+
+        //! The delegate currently displaying through this dialog. Only the
+        //! owner may hide it, so a hover hand-off cannot close the tooltip that
+        //! the newly hovered delegate has just claimed.
+        property QtObject owner: null
+
+        //! A RowLayout wrapper is required, not a bare Label: the dialog is
+        //! positioned from its own size(), which stays 0x0 for a plain Label
+        //! until the surface is mapped. With a 0-width popup the centering term
+        //! (`anchor.x + anchor.width/2 - size.width/2`) collapses and the tooltip
+        //! ends up with its left edge on the icon centre. The thin tooltip host
+        //! uses the same wrapper for this reason.
+        mainItem: RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+
+            PlasmaComponents.Label {
+                Layout.leftMargin: 4
+                Layout.rightMargin: 4
+                Layout.topMargin: 2
+                Layout.bottomMargin: 2
+                text: fallbackTooltipDlg.tooltipText
+            }
+        }
+    }
+
     LatteCore.Dialog{
         id: windowsPreviewDlg
         type: root.plasmoid.configuration.previewWindowAsPopup ? PlasmaCore.Dialog.PopupMenu : PlasmaCore.Dialog.Tooltip
@@ -834,6 +875,7 @@ PlasmoidItem {
         bridge: root.latteBridge
         layout: icList.contentItem
         tasksModel: tasksModel
+        fallbackTooltipDialog: fallbackTooltipDlg
 
         animations.local.speedFactor.current: root.plasmoid.configuration.durationTime
         animations.local.requirements.zoomFactor: root.hasHighThicknessAnimation && LatteCore.WindowSystem.compositingActive ? 1.65 : 1.0

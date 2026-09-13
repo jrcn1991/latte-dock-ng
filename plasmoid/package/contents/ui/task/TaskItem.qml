@@ -5,7 +5,6 @@
 */
 
 import QtQuick
-import QtQuick.Controls as QtControls
 import org.kde.plasma.core as PlasmaCore
 
 import org.kde.latte.core as LatteCore
@@ -100,6 +99,13 @@ AbilityItem.BasicItem {
 
     readonly property bool thinTooltipActive: abilities && abilities.thinTooltip && abilities.thinTooltip.isEnabled
 
+    //! The Qt Controls tooltip is the only hover hint whenever Latte's own
+    //! thin tooltip is not active. That covers both standalone Plasma usage
+    //! and Latte docks whose "titleTooltips" setting is disabled: gating this
+    //! on the Latte environment alone would leave such docks with no tooltip
+    //! at all while hovering their tasks.
+    readonly property bool fallbackTooltipEnabled: !thinTooltipActive
+
     readonly property string fallbackTooltipText: {
         if (thinTooltipText && thinTooltipText.length > 0) {
             return thinTooltipText;
@@ -115,16 +121,52 @@ AbilityItem.BasicItem {
         return "";
     }
 
-    // Fallback tooltip: shown only when Latte thin-tooltips are disabled/unavailable.
-    // This guarantees hover app-name hints without changing existing thin-tooltip behavior.
-    QtControls.ToolTip.visible: taskItem.visualContainsMouse
-                                && !taskItem.isSeparator
-                                && fallbackTooltipText.length > 0
-                                && !windowsPreviewDlg.visible
-                                && !thinTooltipActive
-    QtControls.ToolTip.delay: 120
-    QtControls.ToolTip.timeout: -1
-    QtControls.ToolTip.text: fallbackTooltipText
+    readonly property bool fallbackTooltipShouldShow: fallbackTooltipEnabled
+                                                     && taskItem.visualContainsMouse
+                                                     && !taskItem.isSeparator
+                                                     && fallbackTooltipText.length > 0
+                                                     && !windowsPreviewDlg.visible
+
+    //! Fallback tooltip, anchored to this delegate's own tooltip parent.
+    //!
+    //! The former per-item attached tooltip was created as a window-level
+    //! popup, so Qt positioned it against the window content item and it
+    //! stayed put while the pointer moved from icon to icon. The shared dialog
+    //! passed in through `abilities` is re-anchored to the hovered task's
+    //! `tooltipVisualParent`, which is the same mechanism the thin tooltip and
+    //! the window previews use. A per-delegate dialog is deliberately avoided:
+    //! every extra Wayland surface costs a platform window and stutters hover.
+    //!
+    //! Exactly one delegate may own the dialog. During a hover hand-off the
+    //! leaving and the entering delegate are both "containing mouse" for a
+    //! frame or two; without an owner both write the shared dialog, so its text
+    //! and width alternate (71px <-> 150px) and the popup is repositioned to
+    //! whichever delegate happened to write last - which is why the tooltip
+    //! appeared anchored to the wrong icon.
+    onFallbackTooltipShouldShowChanged: {
+        const dlg = abilities ? abilities.fallbackTooltipDialog : null;
+
+        if (!dlg) {
+            return;
+        }
+
+        if (fallbackTooltipShouldShow) {
+            if (!tooltipVisualParent) {
+                return;
+            }
+
+            dlg.owner = taskItem;
+            dlg.tooltipText = fallbackTooltipText;
+            dlg.visualParent = tooltipVisualParent;
+            dlg.visible = true;
+        } else if (dlg.owner === taskItem) {
+            //! Release ownership: the delegate that currently owns the tooltip
+            //! is the only one allowed to hide it, so a leaving delegate can
+            //! never close the tooltip a newly hovered delegate just claimed.
+            dlg.owner = null;
+            dlg.visible = false;
+        }
+    }
 
     preserveIndicatorInInitialPosition: inBouncingAnimation || inAttentionBuiltinAnimation || inNewWindowBuiltinAnimation
 
