@@ -21,6 +21,12 @@ AbilityDefinition.ThinTooltip {
 
     property Item lastHidingVisualParent: null
 
+    onIsEnabledChanged: {
+        if (!isEnabled) {
+            clearTooltip();
+        }
+    }
+
     //! Public API
     readonly property Item publicApi: Item {
         readonly property alias isEnabled: _thinTooltip.isEnabled
@@ -48,25 +54,40 @@ AbilityDefinition.ThinTooltip {
     }
 
     function show(visualParent, text) {
-        if (!isEnabled || showIsBlocked) {
+        const displayText = text === undefined || text === null ? "" : String(text);
+
+        //! A show() request carries the hovered visual parent even when the
+        //! text is not resolved yet. Clearing the whole tooltip here would
+        //! detach it from the pointer, so empty text is simply ignored.
+        if (!isEnabled || !visualParent || displayText.length === 0) {
+            return;
+        }
+
+        if (showIsBlocked) {
             _hideTimer.stop();
             _showTimer.stop();
             _tooltipDialog.visible = false;
-            //disabling because we need to updated currentvisualparent even when tooltip is blocked
-            //for example when triggering a different applet popup
-            //return;
         }
 
         _hideTimer.stop();
         _thinTooltip.currentVisualParent = visualParent;
         _tooltipDialog.visualParent = visualParent;
 
-        var fixedDisplayText = text.length>maxCharacters ? text.substring(0,maxCharacters-1) + "..." : text;
+        var fixedDisplayText = displayText.length > maxCharacters ? displayText.substring(0, maxCharacters - 1) + "..." : displayText;
         _thinTooltip.currentText = fixedDisplayText;
 
         if (!_tooltipDialog.visible && !showIsBlocked) {
             _showTimer.start();
         }
+    }
+
+    function clearTooltip() {
+        _hideTimer.stop();
+        _showTimer.stop();
+        _tooltipDialog.visible = false;
+        _thinTooltip.lastHidingVisualParent = null;
+        _thinTooltip.currentVisualParent = null;
+        _thinTooltip.currentText = "";
     }
 
     function hide(visualParent) {
