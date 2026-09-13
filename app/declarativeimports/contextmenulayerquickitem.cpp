@@ -456,6 +456,7 @@ void ContextMenuLayerQuickItem::addAppletActions(QMenu *desktopMenu, Plasma::App
             const QList<int> disabledColoring = layoutMgr->property("userBlocksColorizingApplets").value<QList<int>>();
 
             QAction *keepOriginalColorsAction = desktopMenu->addAction(i18nc("@action:inmenu use the icon theme's original colors instead of Latte's colorization", "Use Icon Theme Colors"));
+            keepOriginalColorsAction->setIcon(QIcon::fromTheme(QStringLiteral("preferences-desktop-theme")));
             keepOriginalColorsAction->setCheckable(true);
             keepOriginalColorsAction->setChecked(disabledColoring.contains(appletId));
 

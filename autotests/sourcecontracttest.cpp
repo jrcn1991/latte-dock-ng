@@ -2049,6 +2049,8 @@ void SourceContractTest::appletContextMenuExposesKeepOriginalColorsToggle()
     // AppletItem.qml stops colorizing that applet (issue #44). It must be
     // offered for every applet rather than only the Trash widget.
     QVERIFY(src.contains(QStringLiteral("Use Icon Theme Colors")));
+    QVERIFY(src.contains(QStringLiteral(
+        "keepOriginalColorsAction->setIcon(QIcon::fromTheme(QStringLiteral(\"preferences-desktop-theme\")))")));
     QVERIFY(src.contains(QStringLiteral("userBlocksColorizing")));
     QVERIFY(src.contains(QStringLiteral("setOption")));
     QVERIFY(!src.contains(QStringLiteral("applet->pluginMetaData().pluginId() == QLatin1String(\"org.kde.plasma.trash\")")));
