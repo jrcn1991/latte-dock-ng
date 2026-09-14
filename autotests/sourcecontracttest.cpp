@@ -175,7 +175,9 @@ private Q_SLOTS:
     void mouseButtonEnumUsesMiddleButtonNotMidButton();
     void taskMouseAreaSkipsInactivePreviewChecks();
     void taskFallbackTooltipRespectsLatteTooltipSetting();
+    void taskTooltipUsesHoveredVisualState();
     void thinTooltipHandlesMissingTextAndRepositionsAfterShowing();
+    void tooltipDialogRoutesRepositioningThroughPlasmaGeometry();
     void contextMenuHandlesIncompleteDbusData();
     void dockViewFollowsSystemColorSchemeAtRuntime();
     void dragDropHandlersUseBindingSyntaxForQt6();
@@ -3732,6 +3734,32 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
 
 }
 
+void SourceContractTest::taskTooltipUsesHoveredVisualState()
+{
+    QFile taskItem(QStringLiteral(LATTE_SOURCE_DIR
+                                  "/plasmoid/package/contents/ui/task/TaskItem.qml"));
+    QVERIFY(taskItem.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(taskItem.readAll());
+
+    const int showBlock = source.indexOf(QStringLiteral(
+        "readonly property bool fallbackTooltipShouldShow:"));
+    QVERIFY(showBlock >= 0);
+    const int blockEnd = source.indexOf(QStringLiteral("\n\n"), showBlock);
+    QVERIFY(blockEnd > showBlock);
+    const QString block = source.mid(showBlock, blockEnd - showBlock);
+
+    // The tooltip must follow the parabolic hover owner rather than the
+    // delegate's ordinary MouseArea, which can lag during a hand-off.
+    QVERIFY(block.contains(QStringLiteral("taskItem.visualContainsMouse")));
+    QVERIFY(block.contains(QStringLiteral("!taskItem.isSeparator")));
+    QVERIFY(block.contains(QStringLiteral("!windowsPreviewDlg.visible")));
+
+    const int appNameBlock = source.indexOf(QStringLiteral(
+        "if (model && model.AppName)"));
+    QVERIFY(appNameBlock >= 0);
+    QVERIFY(source.mid(appNameBlock, 260).contains(QStringLiteral("return appNameText;")));
+}
+
 void SourceContractTest::thinTooltipHandlesMissingTextAndRepositionsAfterShowing()
 {
     QFile thinTooltip(QStringLiteral(LATTE_SOURCE_DIR
@@ -3769,6 +3797,34 @@ void SourceContractTest::thinTooltipHandlesMissingTextAndRepositionsAfterShowing
     QVERIFY(visualParent >= 0);
     QVERIFY(currentText > visualParent);
 
+}
+
+void SourceContractTest::tooltipDialogRoutesRepositioningThroughPlasmaGeometry()
+{
+    QFile dialog(QStringLiteral(LATTE_SOURCE_DIR "/declarativeimports/core/dialog.cpp"));
+    QVERIFY(dialog.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(dialog.readAll());
+
+    QFile header(QStringLiteral(LATTE_SOURCE_DIR "/declarativeimports/core/dialog.h"));
+    QVERIFY(header.open(QFile::ReadOnly));
+    const QString headerSource = QString::fromUtf8(header.readAll());
+
+    // Plasma shell surfaces must be repositioned through PlasmaQuick's
+    // geometry hook. A raw QWindow position request is ignored by Wayland
+    // after the popup has been mapped and leaves the tooltip at a stale icon.
+    QVERIFY(headerSource.contains(QStringLiteral(
+        "void adjustGeometry(const QRect &geom) override;")));
+    QVERIFY(source.contains(QStringLiteral(
+        "PlasmaQuick::Dialog::adjustGeometry(geom);")));
+    QVERIFY(source.contains(QStringLiteral(
+        "adjustGeometry(QRect(popupPosition(visualParent(), size()), size()));")));
+    QVERIFY(!source.contains(QStringLiteral("setPosition(popupPosition")));
+    QVERIFY(!source.contains(QStringLiteral("setPosition(visualParent")));
+
+    // Reposition after remapping and after the content receives its real size.
+    QVERIFY(source.contains(QStringLiteral("QQuickWindow::visibleChanged")));
+    QVERIFY(source.contains(QStringLiteral("QQuickWindow::widthChanged")));
+    QVERIFY(source.contains(QStringLiteral("QQuickWindow::heightChanged")));
 }
 
 void SourceContractTest::contextMenuHandlesIncompleteDbusData()
