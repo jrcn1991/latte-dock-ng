@@ -1,28 +1,17 @@
-# Latte Dock NG — Project Instructions & Memory
+# Latte Dock NG — Universal AI Instructions & Knowledge Base
 
-This file is loaded by pi at startup (context file) and holds the project's
-rules and workflow, migrated from Claude Code's project memory.
-
-Two AI-facing memory files share one role split; keep them consistent when
-project knowledge changes:
-
-- `AGENTS.md` (this file) — loaded automatically by pi, OpenAI Codex, Cursor
-  and other AGENTS.md-aware tools. Carries the rules below and the standard
-  debug/retest workflow; always in effect.
-- `CLAUDE.md` — detailed reference: release workflow, known issues, fixes and
-  cross-distro compatibility notes (Claude Code loads it automatically; other
-  agents read it on request).
-
-There is deliberately no separate CODEX.md: Codex reads AGENTS.md, so one
-compact auto-loaded file keeps every agent on the same rules.
+This is the repository's single source of truth for AI coding rules, workflows,
+architecture notes and diagnosis memory. It is tool-neutral and intended for
+pi, Claude Code, OpenAI Codex, Cursor and every other AGENTS.md-aware assistant.
+Keep project knowledge here; do not create tool-specific `CLAUDE.md` or
+`CODEX.md` files.
 
 Shared testing/release procedures live in `docs/`: `development-testing-guide.md`
 documents the autotest suite and the Runtime Retest Workflow (clean-quit and
 coredump A/B verification after runtime fixes).
 
-**Full memory details** (release workflow, known bugs & fixes, compatibility
-notes): read `CLAUDE.md` in the project root when relevant. The rules below
-are always in effect.
+The rules below are always in effect. Consult the later knowledge-base sections
+when working on releases, compatibility problems or known runtime behavior.
 
 ## User Rules (always apply)
 
@@ -47,6 +36,12 @@ are always in effect.
    incl. 170+ source-contract checks on GCC and Clang; fragile areas: digital
    clock, systray, volume, appmenu, clipboard, separator/spacer, middle-click
    close, auto-pin on drag, scroll minimize).
+7. **Document non-obvious design constraints** — Add concise English code
+   comments for runtime workarounds and subtle ownership, lifecycle, timing or
+   cross-component state logic. Explain why the code exists, identify the
+   authoritative state source and record the failure mode that would return if
+   the constraint were removed. This context is required for both human and AI
+   maintainers; do not narrate self-evident code.
 
 ## Development Debug & Retest Workflow
 
@@ -130,7 +125,52 @@ When testing changes to latte-dock-ng, follow this exact workflow:
   Always route through `PlasmaQuick::Dialog::adjustGeometry()`
   (`declarativeimports/core/dialog.cpp`). A stale `x()` in a diagnostic means
   the compositor ignored the request — not that the position math is wrong.
-- **Detailed memory**: release workflow, known issues (appmenu empty slot,
-  knscompat Badge qmldir, blur ghosting fix, hover-preview stutter research,
-  task-tooltip anchoring, runtime theme following) and cross-distro
-  compatibility notes are in `CLAUDE.md`.
+
+## Release Workflow (only on explicit request)
+
+### latte-dock-ng repository
+
+1. Bump `set(VERSION X.Y.Z)` in `CMakeLists.txt` and `version = "X.Y.Z"` in
+   `default.nix`.
+2. Run `nix flake check --print-build-logs`,
+   `nix build .#default --no-link --print-build-logs`, and the required GCC and
+   Clang autotests.
+3. Commit `release: bump version to X.Y.Z`, including the pending changes and
+   `CHANGELOG.md` section.
+4. Create an annotated `vX.Y.Z` tag, then push the commit and tag only with
+   separate explicit user authorization.
+5. After CI creates the artifacts, curate English release notes with a
+   `compare/vPREV...vX.Y.Z` changelog link. Debian trixie packages use the
+   `+deb13u1` revision marker; testing/sid uses plain `-1`.
+
+### Gentoo overlay
+
+- Work in the local checkout of `ruizhi-lab/gentoo-overlay`, branch `main`, at
+  `kde-misc/latte-dock-ng/`.
+- Copy the previous ebuild, ensure `SRC_URI` uses `v${PV}`, remove the obsolete
+  ebuild, and regenerate the Manifest with a temporary writable `DISTDIR`.
+- Generate the Manifest only after the release tag is final. Moving a tag
+  changes GitHub tarballs; delete the stale Manifest and regenerate it or
+  emerge will report a filesize mismatch. Never use sudo for this workflow.
+
+## Architecture & Compatibility Notes
+
+- The application is one large executable assembled by `app/CMakeLists.txt`.
+  Large runtime sources include `layoutmanager.cpp`, `containmentinterface.cpp`,
+  `view.cpp`, `storage.cpp`, and `AppletItem.qml`.
+- Use `-j8` for project builds unless a command has a specific resource limit.
+- User configuration normally disables window previews and retains only title
+  tooltips; treat preview rendering as inactive unless explicitly enabled for a
+  regression test.
+- The application icon is `latte-dock-ng`; never fall back to the legacy
+  `latte-dock` name because third-party themes may supply old artwork for it.
+- Debian Plasma 6.3 lacks a filesystem `org.kde.plasma.plasmoid` QML module.
+  Register it lazily; an attached-type stub breaks Qt 6.8 Behavior resolution.
+- On minimal Fedora Wayland systems, use `--log-file` and
+  `QT_LOGGING_RULES='latte*=true'` to capture Latte's own logs.
+- Keep detailed component invariants next to their implementation. In
+  particular, `TaskItem.qml` documents the task-tooltip ownership, hover and
+  enable-state contract; its source-contract autotests protect that design.
+- Treat `AGENTS.md` as the high-level index and policy document. Put localized
+  failure modes and workaround rationale in English code comments where future
+  maintainers and AI tools will encounter the relevant logic.

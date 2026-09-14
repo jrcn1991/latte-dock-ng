@@ -8,7 +8,7 @@
 - Target release: `v1.0.1`
 - Status: **implemented** (`v1.0.1`, 2026-05). Kept as the historical design
   record; later releases follow the current release workflow documented in
-  `CLAUDE.md` (version bump in `CMakeLists.txt` + `default.nix`, annotated
+  `AGENTS.md` (version bump in `CMakeLists.txt` + `default.nix`, annotated
   `vX.Y.Z` tag, GitHub release, Gentoo overlay ebuild + Manifest).
 
 ## Background
@@ -56,4 +56,3 @@ Historically, these values drifted (`0.10.77` in build metadata vs `v1.0.0` in G
 4. Create annotated tag `vX.Y.Z`.
 5. Push tag.
 6. Publish GitHub Release from the pushed tag.
-

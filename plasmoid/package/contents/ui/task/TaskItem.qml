@@ -98,16 +98,22 @@ AbilityItem.BasicItem {
         return "";
     }
 
-    // Task tooltips are rendered in the task item's own scene so they follow
-    // the parabolic animation exactly. The window-based thin tooltip remains
-    // available to regular applets, but is deliberately not used for tasks.
+    // Task tooltip contract:
+    //  * Keep thinTooltipText empty so tasks do not also drive Latte's shared
+    //    thin-tooltip dialog. The local ToolTip below follows this delegate as
+    //    parabolic animation moves it; regular applets still use the dialog.
+    //  * Inside Latte, abilities.thinTooltip.isEnabled is the authoritative
+    //    titleTooltips state. The task plasmoid's configuration object can be
+    //    undefined or stale across screen/view instances. Standalone Plasma
+    //    has no Latte ability host, so it always retains the local fallback.
+    //  * Use visualContainsMouse because the parabolic event area owns hover
+    //    tracking. Keep preview, separator and empty-text guards synchronized.
     thinTooltipText: ""
 
     readonly property bool thinTooltipActive: abilities && abilities.thinTooltip && abilities.thinTooltip.isEnabled
 
-    //! The fallback is only for standalone Plasma usage, where Latte's shared
-    //! thin-tooltip host is unavailable. Inside Latte, titleTooltips=false must
-    //! disable task tooltips instead of silently switching to the fallback.
+    //! Inside Latte the ability controls visibility; outside Latte this is the
+    //! only task tooltip implementation available.
     readonly property bool fallbackTooltipEnabled: !root.inLatteDockEnvironment || thinTooltipActive
 
     readonly property string fallbackTooltipText: {
@@ -131,10 +137,28 @@ AbilityItem.BasicItem {
                                                      && fallbackTooltipText.length > 0
                                                      && !windowsPreviewDlg.visible
 
-    QtControls.ToolTip.visible: fallbackTooltipShouldShow
-    QtControls.ToolTip.delay: 120
-    QtControls.ToolTip.timeout: -1
-    QtControls.ToolTip.text: fallbackTooltipText
+    QtControls.ToolTip {
+        id: fallbackTooltip
+
+        parent: taskItem
+        visible: fallbackTooltipShouldShow
+        delay: 120
+        timeout: -1
+        text: fallbackTooltipText
+    }
+
+    // Do not replace this local object with QtControls.ToolTip.visible attached
+    // properties. Attached tooltips share a window-level singleton: disabling
+    // titleTooltips then leaves the last displayed task tooltip mapped. Closing
+    // this owned instance also cancels its pending 120 ms delayed show.
+    Connections {
+        target: abilities && abilities.thinTooltip ? abilities.thinTooltip : null
+        function onIsEnabledChanged() {
+            if (!thinTooltipActive) {
+                fallbackTooltip.close();
+            }
+        }
+    }
 
     preserveIndicatorInInitialPosition: inBouncingAnimation || inAttentionBuiltinAnimation || inNewWindowBuiltinAnimation
 

@@ -3714,8 +3714,16 @@ void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
     QVERIFY(taskItemSource.contains(QStringLiteral(
         "fallbackTooltipEnabled: !root.inLatteDockEnvironment || thinTooltipActive")));
     QVERIFY(taskItemSource.contains(QStringLiteral("fallbackTooltipShouldShow")));
-    QVERIFY(taskItemSource.contains(QStringLiteral("QtControls.ToolTip.visible:")));
-    QVERIFY(taskItemSource.contains(QStringLiteral("QtControls.ToolTip.text: fallbackTooltipText")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("QtControls.ToolTip {")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("id: fallbackTooltip")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("parent: taskItem")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("visible: fallbackTooltipShouldShow")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("text: fallbackTooltipText")));
+    QVERIFY(taskItemSource.contains(QStringLiteral(
+        "target: abilities && abilities.thinTooltip ? abilities.thinTooltip : null")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("function onIsEnabledChanged()")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("fallbackTooltip.close();")));
+    QVERIFY(!taskItemSource.contains(QStringLiteral("QtControls.ToolTip.visible:")));
 
     QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
     QVERIFY(mainQml.open(QFile::ReadOnly));
