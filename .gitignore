@@ -51,6 +51,7 @@ CMakeLists.txt.user*
 
 # AI and tooling
 .cache/
+.codex/
 .claude/
 .pi/
 openspec/
