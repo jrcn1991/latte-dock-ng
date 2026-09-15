@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+## [v1.2.48] - 2026-09-15
+
+### Fixed
+- Restore task title tooltips after the anchoring and theme-following changes,
+  keeping them aligned with the hovered icon during parabolic zoom (issue #57).
+- Make the title-tooltip setting consistent across primary and secondary docks;
+  disabling it now closes every task tooltip, including the last one shown.
+
+### Changed
+- Task tooltips now use per-task Qt Quick Controls objects. This avoids the
+  attached tooltip singleton retaining a stale popup on another task.
+- Consolidate the repository's AI coding rules, architecture constraints and
+  release workflow in `AGENTS.md`.
+
+### Tests
+- Add source-contract coverage for tooltip ownership, setting synchronization
+  and hovered visual state.
+- GCC and Clang autotest suites pass all 40 registered tests.
+
 ## [v1.2.47] - 2026-09-04
 
 ### Added
