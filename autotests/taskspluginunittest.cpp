@@ -17,6 +17,8 @@
 #include <QtQml/qqml.h>
 #include <QTest>
 
+#include <memory>
+
 class TasksPluginUnitTest : public QObject
 {
     Q_OBJECT
@@ -55,6 +57,7 @@ void TasksPluginUnitTest::registersQmlTypes()
                           "QtObject {\n"
                           "    readonly property int click: types.LeftClick\n"
                           "    property ContextMenuActionsBackend backend\n"
+                          "    property WindowViewBackend windowView: WindowViewBackend {}\n"
                           "}\n"),
                       QUrl(QStringLiteral("qrc:/taskspluginregistrationtest.qml")));
     if (component.isError()) {
@@ -62,6 +65,9 @@ void TasksPluginUnitTest::registersQmlTypes()
         qWarning() << "staged module files:" << QDir(modulePath).entryList(QDir::Files);
     }
     QCOMPARE(component.status(), QQmlComponent::Ready);
+    const std::unique_ptr<QObject> object(component.create());
+    QVERIFY(object);
+    QVERIFY(object->property("windowView").value<QObject *>());
 
     QVERIFY(qmlTypeId("org.kde.latte.private.tasks", 0, 1, "ContextMenuActionsBackend") >= 0);
     // The probe above is the authoritative check for the Types gadget:

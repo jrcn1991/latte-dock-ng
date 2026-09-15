@@ -12,6 +12,7 @@
 #include <QDir>
 #include <QFile>
 #include <QMetaObject>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -69,6 +70,7 @@ private Q_SLOTS:
     void launchersGeometryRestoreSchedulingLoadsFromSource();
     void plasmaVolumeBootstrapLoadsFromSource();
     void taskMouseAreaAllClickActionsPresent();
+    void taskPresentationFiltersPhantoms();
     void taskMouseAreaRegressionGuardsPresent();
     void taskMouseAreaStructuralGuardsPresent();
     void tasksConfigComboModelsComplete();
@@ -1170,6 +1172,47 @@ void QmlSmokeTest::plasmaVolumeBootstrapLoadsFromSource()
     QCOMPARE(paFixTimer->property("running").toBool(), true);
 }
 
+void QmlSmokeTest::taskPresentationFiltersPhantoms()
+{
+    QFile file(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/task/SubWindows.qml"));
+    QVERIFY(file.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString source = QString::fromUtf8(file.readAll());
+    // Execute the production JavaScript helpers with just the task-model
+    // boundary mocked, without constructing the dock's entire scene graph.
+    QQmlEngine engine;
+    for (const auto &name : {"isActivatableChild", "presentableWindowIds"}) {
+        const int start = source.indexOf(QStringLiteral("    function %1(").arg(QLatin1String(name)));
+        QVERIFY(start >= 0);
+        const int end = source.indexOf(QStringLiteral("\n    }"), start);
+        QVERIFY(end > start);
+        const auto result = engine.evaluate(source.mid(start, end + 6 - start));
+        QVERIFY2(!result.isError(), qPrintable(result.toString()));
+    }
+    const auto setup = engine.evaluate(QStringLiteral(R"(
+        var children = [
+            {model: {WinIdList: ["visible"], IsHidden: false}},
+            {model: {WinIdList: ["minimized"], IsHidden: true, IsMinimized: true}},
+            {model: {WinIdList: ["phantom"], IsHidden: true, IsMinimized: false}},
+            {model: {WinIdList: []}},
+            {model: {WinIdList: ["visible"]}},
+            null
+        ];
+        var taskItem = {modelIndex: function() { return 42; }};
+        var windowsLocalModel = {rootIndex: -1, items: {
+            count: children.length, get: function(i) { return children[i]; }
+        }};
+    )"));
+    QVERIFY2(!setup.isError(), qPrintable(setup.toString()));
+    const auto ids = engine.evaluate(QStringLiteral("presentableWindowIds()"));
+    QVERIFY2(!ids.isError(), qPrintable(ids.toString()));
+    QCOMPARE(ids.toVariant().toList(), QVariantList({QStringLiteral("visible"), QStringLiteral("minimized")}));
+    QCOMPARE(engine.evaluate(QStringLiteral("windowsLocalModel.rootIndex")).toInt(), 42);
+
+    const auto single = engine.evaluate(QStringLiteral(
+        "children = [children[0], children[2]]; windowsLocalModel.items.count = children.length; presentableWindowIds()"));
+    QCOMPARE(single.toVariant().toList(), QVariantList({QStringLiteral("visible")}));
+}
+
 void QmlSmokeTest::taskMouseAreaAllClickActionsPresent()
 {
     // Verify TaskMouseArea.qml handles all 9 TaskAction enum values for
@@ -1213,6 +1256,15 @@ void QmlSmokeTest::taskMouseAreaAllClickActionsPresent()
         const QString modPattern = QStringLiteral("modifierClickAction == LatteTasks.types.%1").arg(action);
         QVERIFY2(source.contains(modPattern),
                  qPrintable(QStringLiteral("TaskMouseArea.qml missing modifier-click handler for %1").arg(action)));
+    }
+
+    // Mentioning an enum is insufficient: the old Present Windows branches
+    // existed but only cycled tasks through a permanently unavailable backend.
+    for (const auto &click : {"left", "middle", "modifier"}) {
+        const QRegularExpression presentCall(QStringLiteral(
+            "%1ClickAction ==+ LatteTasks\\.types\\.PresentWindows\\)\\s*\\{\\s*taskItem\\.presentWindows\\(\\);")
+            .arg(QLatin1String(click)));
+        QVERIFY2(presentCall.match(source).hasMatch(), click);
     }
 
     // NoneAction must be acknowledged (comment is fine)
@@ -1277,8 +1329,9 @@ void QmlSmokeTest::taskMouseAreaRegressionGuardsPresent()
     // Highlight cancellation must still run after all click handlers
     QVERIFY(source.contains(QStringLiteral("cancelHighlightWindows")));
 
-    // canPresentWindowsIsSupported guard must still exist for PresentWindows fallback
-    QVERIFY(source.contains(QStringLiteral("canPresentWindowsIsSupported")));
+    // The former capability guard always evaluated false in our compat module.
+    // Fallback now follows the asynchronous effect reply in TaskItem instead.
+    QVERIFY(!source.contains(QStringLiteral("canPresentWindowsIsSupported")));
 
     // preventStealing must still be set (Qt6 drag regression guard)
     QVERIFY(source.contains(QStringLiteral("preventStealing: true")));

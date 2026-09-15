@@ -227,6 +227,27 @@ Item{
         return true;
     }
 
+    function presentableWindowIds() {
+        windowsLocalModel.rootIndex = taskItem.modelIndex();
+        var ids = [];
+        var childs = windowsLocalModel.items;
+        for (var i = 0; i < childs.count; ++i) {
+            var kid = childs.get(i);
+            // Use the same eligibility as cycling: hidden daemon toplevels
+            // must not turn a single real window into a presentation group.
+            // Minimized real windows remain eligible for both operations.
+            if (isActivatableChild(kid)) {
+                for (var j = 0; j < kid.model.WinIdList.length; ++j) {
+                    var id = kid.model.WinIdList[j];
+                    if (ids.indexOf(id) === -1) {
+                        ids.push(id);
+                    }
+                }
+            }
+        }
+        return ids;
+    }
+
     //! Activate child by subIndex
     //! Restore it first, if minimized
     //! In plasma 6 requestActivate() does not unminimize windows by itself,

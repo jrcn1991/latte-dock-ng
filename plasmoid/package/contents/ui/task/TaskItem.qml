@@ -556,19 +556,39 @@ AbilityItem.BasicItem {
         }
     }
 
+    // Present Windows is a KWin effect, independent of our disabled thumbnail
+    // preview path. Own the asynchronous request in this delegate so removal
+    // cannot activate another task through a stale completion callback.
+    LatteTasks.WindowViewBackend {
+        id: windowViewBackend
+        onFinished: (presented) => {
+            if (!presented) {
+                taskItem.activateTask();
+            }
+        }
+    }
+
+    function presentWindows() {
+        if (!isGroupParent || isLauncher || root.disableAllWindowsFunctionality) {
+            activateTask();
+            return;
+        }
+        var ids = subWindows.presentableWindowIds();
+        if (ids.length < 2) {
+            activateTask();
+            return;
+        }
+        windowViewBackend.presentWindows(ids);
+    }
+
     function activateTask() {
         if( taskItem.isLauncher || root.disableAllWindowsFunctionality){
             activateLauncher();
         } else{
             if (model.IsGroupParent) {
-                // Always cycle through real windows of the group. The legacy
-                // path went through KWin's WindowView/Overview effect via
-                // backend.windowViewAvailable, but it isn't reliably
-                // installed/enabled across Plasma 6 Wayland sessions and is
-                // a no-op for groups whose extra entry is a phantom toplevel
-                // (e.g. ghostty's headless daemon process). activateNextTask
-                // already filters phantoms (IsHidden / empty WinIdList) so
-                // a single click lands on a focusable terminal.
+                // Ordinary activation and failed Present Windows requests cycle
+                // through real windows. Keep phantom filtering here (e.g.
+                // ghostty's headless daemon), even when WindowView is unavailable.
                 subWindows.activateNextTask();
             } else {
                 if (windowsPreviewDlg.visible) {

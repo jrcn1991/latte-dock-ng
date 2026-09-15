@@ -32,7 +32,7 @@ when working on releases, compatibility problems or known runtime behavior.
    compilation AND runtime behavior afterwards; check the debug log for new
    errors/warnings.
 6. **Release requires autotest** — Before every release run
-   `cd build && ctest --output-on-failure` (40 registered autotest targets
+   `cd build && ctest --output-on-failure` (41 registered autotest targets
    incl. 170+ source-contract checks on GCC and Clang; fragile areas: digital
    clock, systray, volume, appmenu, clipboard, separator/spacer, middle-click
    close, auto-pin on drag, scroll minimize).

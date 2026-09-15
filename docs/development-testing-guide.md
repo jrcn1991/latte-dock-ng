@@ -13,6 +13,8 @@ The current suite covers:
 - declarative core helper objects
 - QML plugin loading for `org.kde.latte.core`
 - enum and task plugin guard behavior
+- KWin WindowView D-Bus group selection, unavailable-effect fallback and retry
+  behavior (`windowviewbackendtest`, isolated with `dbus-run-session`)
 - package structure and bundled indicator package resolution
 - indicator metadata and archive import paths
 - abstract layout configuration behavior
@@ -48,6 +50,21 @@ After tests pass, verify the regular user install path:
 ```bash
 ./install.sh --user --jobs 8
 ```
+
+## Present Windows Retest (Wayland)
+
+After a user-mode Debug install, open two windows of the same application and
+set its Latte task action to **Present Windows**. Clicking the group should
+display KWin's window selector, not cycle focus. Check both the visible result
+and `org.kde.kwin.Effects.activeEffects` on `/Effects`: an accepted D-Bus reply
+alone does not prove that KWin displayed any windows.
+
+Also verify that a minimized group member is included, a single real window
+still activates normally, and temporarily unloading `windowview` causes group
+cycling. Restore the effect immediately; the next click should present again
+without restarting Latte. The backend test covers unavailable interfaces on a
+private bus, while the QML tests protect click routing and phantom filtering.
+Hover-thumbnail previews remain disabled and are outside this test's scope.
 
 ## Runtime Retest Workflow
 

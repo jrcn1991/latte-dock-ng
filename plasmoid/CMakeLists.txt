@@ -5,13 +5,15 @@ plasma_install_package(package org.kde.latte.plasmoid)
 find_package(PlasmaActivitiesStats REQUIRED)
 
 set(tasks_SRCS
+    plugin/windowviewbackend.cpp
+    plugin/windowviewbackend.h
     plugin/contextmenuactionsbackend.cpp
     plugin/contextmenuactionsbackend.h
     plugin/types.cpp
     plugin/types.h
 )
 
-# Types and ContextMenuActionsBackend are registered declaratively via
+# Task types and backends are registered declaratively via
 # QML_NAMED_ELEMENT; qt_add_qml_module generates the plugin class, the
 # registration code and the qmldir installed below.
 set(LATTE_TASKS_QML_BUILD_DIR ${CMAKE_BINARY_DIR}/qml/org/kde/latte/private/tasks)
@@ -32,6 +34,7 @@ set_target_properties(lattetasksplugin PROPERTIES
 )
 
 target_link_libraries(lattetasksplugin PRIVATE
+                      Qt6::DBus
                       Qt6::Core
                       Qt6::Gui
                       Qt6::Qml

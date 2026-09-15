@@ -944,6 +944,20 @@ add_executable(autostartlogictest EXCLUDE_FROM_ALL ${autostartlogictest_SRCS})
 target_link_libraries(autostartlogictest Qt6::Core Qt6::Test KF6::ConfigCore)
 latte_add_test(autostartlogictest)
 
+find_program(DBUS_RUN_SESSION_EXECUTABLE dbus-run-session REQUIRED)
+add_executable(windowviewbackendtest EXCLUDE_FROM_ALL
+    windowviewbackendtest.cpp
+    ../plasmoid/plugin/windowviewbackend.cpp
+    ../plasmoid/plugin/windowviewbackend.h
+)
+target_link_libraries(windowviewbackendtest Qt6::Core Qt6::DBus Qt6::Qml Qt6::Test)
+# Keep the fake KWin service off the real desktop's session bus.
+add_test(NAME windowviewbackendtest
+    COMMAND ${DBUS_RUN_SESSION_EXECUTABLE} -- ${CMAKE_COMMAND} -E env
+        LATTE_PRIVATE_TEST_BUS=1 $<TARGET_FILE:windowviewbackendtest>)
+set_property(TEST windowviewbackendtest PROPERTY TIMEOUT ${LATTE_AUTOTEST_TIMEOUT})
+list(APPEND latte_autotest_targets windowviewbackendtest)
+
 # Some tests compile app sources directly, so they need the shared logging
 # categories (latte_debug.h) just like the application targets.
 foreach(_latte_test_target IN LISTS latte_autotest_targets)

@@ -13,6 +13,9 @@ QtObject {
     // plasma-private taskmanager module is not available on the distro.
     property Item taskManagerItem: null
     property bool highlightWindows: false
+    // Legacy API placeholders only. TaskItem owns a WindowViewBackend and
+    // handles asynchronous failure per delegate; do not gate Present Windows
+    // on these flags or it will silently become window cycling again.
     property bool windowViewAvailable: false
     property bool canPresentWindows: false
     property var groupDialog: null

@@ -196,7 +196,7 @@ MouseArea {
                     } else if (root.modifierClickAction == LatteTasks.types.ToggleGrouping) {
                         tasksModel.requestToggleGrouping(modelIndex());
                     } else if (root.modifierClickAction == LatteTasks.types.PresentWindows) {
-                        activateTask();
+                        taskItem.presentWindows();
                     } else if (root.modifierClickAction == LatteTasks.types.PreviewWindows) {
                         if (isGroupParent)
                             subWindows.activateNextTask();
@@ -231,7 +231,7 @@ MouseArea {
                     } else if (root.middleClickAction == LatteTasks.types.ToggleGrouping) {
                         tasksModel.requestToggleGrouping(modelIndex());
                     } else if (root.middleClickAction == LatteTasks.types.PresentWindows) {
-                        activateTask();
+                        taskItem.presentWindows();
                     } else if (root.middleClickAction == LatteTasks.types.PreviewWindows) {
                         if (isGroupParent)
                             subWindows.activateNextTask();
@@ -251,8 +251,6 @@ MouseArea {
                     activateTask();
                 }
             } else if (mouse.button == Qt.LeftButton){
-                var canPresentWindowsIsSupported = LatteCore.WindowSystem.compositingActive && backend.windowViewAvailable;
-
                 if (taskItem.isLauncher || root.disableAllWindowsFunctionality) {
                     activateTask();
                 } else if (root.leftClickAction === LatteTasks.types.Close) {
@@ -270,11 +268,7 @@ MouseArea {
                 } else if (root.leftClickAction === LatteTasks.types.ToggleGrouping) {
                     tasksModel.requestToggleGrouping(modelIndex());
                 } else if (root.leftClickAction === LatteTasks.types.PresentWindows) {
-                    if (!canPresentWindowsIsSupported && isGroupParent) {
-                        subWindows.activateNextTask();
-                    } else {
-                        activateTask();
-                    }
+                    taskItem.presentWindows();
                 } else if (root.leftClickAction === LatteTasks.types.PreviewWindows) {
                     if (isGroupParent) {
                         subWindows.activateNextTask();

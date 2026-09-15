@@ -12,6 +12,7 @@ stdenv.mkDerivation {
 
   nativeBuildInputs = [
     cmake
+    pkgs.dbus
     kdePackages.extra-cmake-modules
     kdePackages.wrapQtAppsHook
   ];
