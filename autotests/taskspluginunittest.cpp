@@ -58,6 +58,7 @@ void TasksPluginUnitTest::registersQmlTypes()
                           "    readonly property int click: types.LeftClick\n"
                           "    property ContextMenuActionsBackend backend\n"
                           "    property WindowViewBackend windowView: WindowViewBackend {}\n"
+                          "    property PreviewProcess preview: PreviewProcess {}\n"
                           "}\n"),
                       QUrl(QStringLiteral("qrc:/taskspluginregistrationtest.qml")));
     if (component.isError()) {
@@ -68,6 +69,9 @@ void TasksPluginUnitTest::registersQmlTypes()
     const std::unique_ptr<QObject> object(component.create());
     QVERIFY(object);
     QVERIFY(object->property("windowView").value<QObject *>());
+    // The isolated preview manager must be constructible from the tasks
+    // module; its absence would silently break the opt-in preview path.
+    QVERIFY(object->property("preview").value<QObject *>());
 
     QVERIFY(qmlTypeId("org.kde.latte.private.tasks", 0, 1, "ContextMenuActionsBackend") >= 0);
     // The probe above is the authoritative check for the Types gadget:

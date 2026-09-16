@@ -174,6 +174,7 @@ private Q_SLOTS:
     // Qt5→Qt6 migration guards — patterns that cause regressions
     void mouseButtonEnumUsesMiddleButtonNotMidButton();
     void taskMouseAreaSkipsInactivePreviewChecks();
+    void isolatedWindowPreviewProcessIsFailClosed();
     void taskFallbackTooltipRespectsLatteTooltipSetting();
     void taskTooltipUsesHoveredVisualState();
     void thinTooltipHandlesMissingTextAndRepositionsAfterShowing();
@@ -3698,6 +3699,91 @@ void SourceContractTest::taskMouseAreaSkipsInactivePreviewChecks()
     const QString guard = QStringLiteral("if((root.showPreviews || root.highlightWindows)\n"
                                          "                && isAbleToShowPreview");
     QVERIFY(taskMouseSource.contains(guard));
+
+    // A persisted preview hover action must not load the experimental scene
+    // while preview responsiveness is unverified, even before any task hover.
+    QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(mainQml.open(QFile::ReadOnly));
+    const QString mainSource = QString::fromUtf8(mainQml.readAll());
+    QVERIFY(mainSource.contains(QStringLiteral("readonly property bool showPreviews: false")));
+    QVERIFY(mainSource.contains(QStringLiteral("id: toolTipDelegateLoader\n        active: root.showPreviews")));
+}
+
+void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
+{
+    // The dock-side manager must stay asynchronous and fail closed. Any
+    // blocking wait on the helper, capture or screencasting would freeze the
+    // dock's event loop, which is the exact failure the isolation removes.
+    QFile manager(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/plugin/previewprocess.cpp"));
+    QVERIFY(manager.open(QFile::ReadOnly));
+    const QString managerSource = QString::fromUtf8(manager.readAll());
+    QVERIFY(managerSource.contains(QStringLiteral("LATTE_ISOLATED_PREVIEWS")));
+    QVERIFY(managerSource.contains(QStringLiteral("MaxProtocolBytes")));
+    QVERIFY(managerSource.contains(QStringLiteral("MaxPreviews = 9")));
+    QVERIFY(managerSource.contains(QStringLiteral("MaxConsecutiveFailures")));
+    QVERIFY(managerSource.contains(QStringLiteral("QUuid")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeHeartbeat")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeActivate")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeMove")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeClosed")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForStarted")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForFinished")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForReadyRead")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForBytesWritten")));
+
+    // The helper owns the popup. A cross-process xdg_popup is impossible (no
+    // transientParent in a separate client), so the surface must be a
+    // layer-shell overlay positioned with anchors + margins; a raw window
+    // position request is only valid on the non-Wayland path.
+    QFile helper(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/main.cpp"));
+    QVERIFY(helper.open(QFile::ReadOnly));
+    const QString helperSource = QString::fromUtf8(helper.readAll());
+    QVERIFY(helperSource.contains(QStringLiteral("LayerShellQt::Window::get")));
+    QVERIFY(helperSource.contains(QStringLiteral("setMargins")));
+    QVERIFY(helperSource.contains(QStringLiteral("setDesiredSize")));
+    QVERIFY(helperSource.contains(QStringLiteral("startsWith(QLatin1String(\"wayland\"))")));
+    QVERIFY(helperSource.contains(QStringLiteral("IdleLeaseMs")));
+    QVERIFY(helperSource.contains(QStringLiteral("isBoundedNumber")));
+    QVERIFY(helperSource.contains(QStringLiteral("QStringLiteral(\"move\")")));
+
+    // Capture stays asynchronous and is resolved per window so one failed
+    // PipeWire handshake cannot take down the whole preview dialog.
+    QFile capture(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/Capture.qml"));
+    QVERIFY(capture.open(QFile::ReadOnly));
+    const QString captureSource = QString::fromUtf8(capture.readAll());
+    QVERIFY(captureSource.contains(QStringLiteral("PipeWireSourceItem")));
+    QVERIFY(captureSource.contains(QStringLiteral("ScreencastingRequest")));
+    QVERIFY(captureSource.contains(QStringLiteral("uuid: source.parent.uuid")));
+
+    QFile preview(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/Preview.qml"));
+    QVERIFY(preview.open(QFile::ReadOnly));
+    const QString previewSource = QString::fromUtf8(preview.readAll());
+    QVERIFY(previewSource.contains(QStringLiteral("asynchronous: true")));
+    QVERIFY(previewSource.contains(QStringLiteral("TapHandler")));
+
+    // The helper is built and installed alongside the dock, and the feature is
+    // opt-in: the legacy in-process preview scene stays unloaded regardless of
+    // the persisted hover action.
+    QFile cmake(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/CMakeLists.txt"));
+    QVERIFY(cmake.open(QFile::ReadOnly));
+    const QString cmakeSource = QString::fromUtf8(cmake.readAll());
+    QVERIFY(cmakeSource.contains(QStringLiteral("add_executable(latte-dock-ng-preview")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("previewprocess.cpp")));
+
+    QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(mainQml.open(QFile::ReadOnly));
+    const QString mainSource = QString::fromUtf8(mainQml.readAll());
+    QVERIFY(mainSource.contains(QStringLiteral("readonly property bool showPreviews: false")));
+    QVERIFY(mainSource.contains(QStringLiteral("isolatedPreviewsEnabled")));
+    // Frame-rate tracking keeps the preview glued to the icon during the
+    // parabolic zoom animation, like the thin tooltip.
+    QVERIFY(mainSource.contains(QStringLiteral("FrameAnimation")));
+
+    QFile taskItem(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/task/TaskItem.qml"));
+    QVERIFY(taskItem.open(QFile::ReadOnly));
+    const QString taskItemSource = QString::fromUtf8(taskItem.readAll());
+    QVERIFY(taskItemSource.contains(QStringLiteral("function moveIsolatedPreview")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("mapToGlobal")));
 }
 
 void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()

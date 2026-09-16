@@ -4,7 +4,24 @@ plasma_install_package(package org.kde.latte.plasmoid)
 
 find_package(PlasmaActivitiesStats REQUIRED)
 
+add_executable(latte-dock-ng-preview preview/main.cpp)
+qt_add_resources(latte-dock-ng-preview preview_resources
+    PREFIX "/preview" BASE "preview"
+    FILES preview/Preview.qml preview/Capture.qml)
+target_link_libraries(latte-dock-ng-preview PRIVATE
+    Qt6::Widgets Qt6::Quick Qt6::Qml Qt6::Gui
+    Plasma::Plasma LayerShellQt::Interface KF6::IconThemes)
+if(LATTE_LAYERSHELL_HAS_SET_SCREEN)
+    target_compile_definitions(latte-dock-ng-preview PRIVATE LATTE_LAYERSHELL_HAS_SET_SCREEN)
+endif()
+if(LATTE_LAYERSHELL_HAS_DESIRED_SIZE)
+    target_compile_definitions(latte-dock-ng-preview PRIVATE LATTE_LAYERSHELL_HAS_DESIRED_SIZE)
+endif()
+install(TARGETS latte-dock-ng-preview DESTINATION ${KDE_INSTALL_BINDIR})
+
 set(tasks_SRCS
+    plugin/previewprocess.cpp
+    plugin/previewprocess.h
     plugin/windowviewbackend.cpp
     plugin/windowviewbackend.h
     plugin/contextmenuactionsbackend.cpp
