@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QQmlComponent>
+#include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QQuickView>
@@ -14,8 +15,11 @@
 #include <QTimer>
 #include <QUuid>
 #include <KIconTheme>
+#include <KLocalizedQmlContext>
+#include <KLocalizedString>
 #include <LayerShellQt/window.h>
 #include <Plasma/Plasma>
+#include <Plasma/Theme>
 #include <cmath>
 #include <fcntl.h>
 #include <unistd.h>
@@ -54,10 +58,12 @@ public:
 Q_SIGNALS:
     void hoveredChanged();
     void activateRequested(const QString &uuid);
+    void closeRequested(const QString &uuid);
 public Q_SLOTS:
     // QML exposes activate() as an old-style signal, so it needs a real slot
     // to bridge into the protocol writer.
     void activate(const QString &uuid) { Q_EMIT activateRequested(uuid); }
+    void close(const QString &uuid) { Q_EMIT closeRequested(uuid); }
 protected:
     bool event(QEvent *event) override
     {
@@ -71,22 +77,57 @@ protected:
 int main(int argc, char **argv)
 {
     KIconTheme::initTheme();
+    // KWin resolves privileged Wayland interfaces by matching this process's
+    // executable path to a desktop entry. The helper therefore has a separate
+    // hidden entry whose Exec points at latte-dock-ng-preview and declares the
+    // screencast protocol. Set the matching identity before QApplication
+    // constructs the Wayland connection.
+    QGuiApplication::setDesktopFileName(QStringLiteral("org.kde.latte-dock.preview"));
     QApplication app(argc, argv);
+    Plasma::Theme plasmaTheme;
+    // PlasmaCore's QML plugin uses KI18n while its types are being loaded.
+    // Initialize KI18n on the GUI thread first; otherwise its global language
+    // change event filter can be created on QQmlThread and Qt rejects installing
+    // that filter on the QApplication object owned by this thread.
+    KLocalizedString::setApplicationDomain("plasma_applet_org.kde.latte.plasmoid");
+    (void)KLocalizedString::languages();
     app.setQuitOnLastWindowClosed(false);
     app.setApplicationName(QStringLiteral("latte-dock-ng-preview"));
     PreviewView view;
+    auto *localizedContext = new KLocalizedQmlContext(view.engine());
+    view.engine()->rootContext()->setContextObject(localizedContext);
+    QQmlEngine::setContextForObject(localizedContext, view.engine()->rootContext());
+    localizedContext->setTranslationDomain(QStringLiteral("plasma_applet_org.kde.latte.plasmoid"));
     view.setFlags(Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus | Qt::WindowStaysOnTopHint);
     view.setColor(Qt::transparent);
-    view.setSource(QUrl(QStringLiteral("qrc:/preview/Preview.qml")));
-    if (view.status() != QQuickView::Ready) {
-        qWarning() << view.errors();
+    // The helper root is a local resource, so load it synchronously; capture
+    // components themselves remain asynchronous and cannot block the dock.
+    const QUrl previewUrl(QStringLiteral("qrc:/preview/Preview.qml"));
+    QQmlComponent component(view.engine(), previewUrl, QQmlComponent::PreferSynchronous);
+    if (component.status() != QQmlComponent::Ready) {
+        qWarning() << component.errors();
         return 1;
     }
+    QObject *rootObject = component.create();
+    if (!rootObject) {
+        qWarning() << component.errors();
+        return 1;
+    }
+    view.setContent(previewUrl, &component, rootObject);
     QQuickItem *item = view.rootObject();
     if (!item) {
         qWarning() << "Preview.qml has no root item";
         return 1;
     }
+    // Do not replace QApplication's palette: that changes which colorized SVG
+    // variant FrameSvg selects and can turn a dark Plasma popup light. A bare
+    // QQuickView lacks PlasmaQuick::Dialog's foreground propagation, so inject
+    // only the authoritative Plasma text color into the QML root.
+    auto applyPlasmaTheme = [&]() {
+        item->setProperty("popupTextColor", plasmaTheme.color(Plasma::Theme::TextColor));
+    };
+    applyPlasmaTheme();
+    QObject::connect(&plasmaTheme, &Plasma::Theme::themeChanged, &view, applyPlasmaTheme);
     // Configure the layer surface before the window is first shown so the QPA
     // plugin creates the correct role. Margins and size are refreshed later.
     auto *layer = LayerShellQt::Window::get(&view);
@@ -183,8 +224,13 @@ int main(int argc, char **argv)
         }
     };
     QObject::connect(item, SIGNAL(activate(QString)), &view, SLOT(activate(QString)));
+    QObject::connect(item, SIGNAL(closeRequested(QString)), &view, SLOT(close(QString)));
     QObject::connect(&view, &PreviewView::activateRequested, &app, [&](const QString &uuid) {
         writeMessage(QJsonObject{{QStringLiteral("type"), QStringLiteral("activate")},
+            {QStringLiteral("serial"), serial}, {QStringLiteral("uuid"), uuid}});
+    });
+    QObject::connect(&view, &PreviewView::closeRequested, &app, [&](const QString &uuid) {
+        writeMessage(QJsonObject{{QStringLiteral("type"), QStringLiteral("close")},
             {QStringLiteral("serial"), serial}, {QStringLiteral("uuid"), uuid}});
     });
     QObject::connect(&view, &PreviewView::hoveredChanged, &app, report);
@@ -262,6 +308,7 @@ int main(int argc, char **argv)
                 }
                 anchor = QRect(x.toInt(), y.toInt(), width.toInt(), height.toInt());
                 edge = requestedEdge;
+                item->setProperty("edge", edge);
                 place();
                 continue;
             }
@@ -277,7 +324,10 @@ int main(int argc, char **argv)
             for (const auto &window : windows) {
                 const auto object = window.toObject();
                 if (QUuid(object.value(QStringLiteral("uuid")).toString()).isNull()
-                        || !object.value(QStringLiteral("title")).isString()) {
+                        || !object.value(QStringLiteral("title")).isString()
+                        || !object.value(QStringLiteral("appName")).isString()
+                        || !object.value(QStringLiteral("launcherUrl")).isString()
+                        || !object.value(QStringLiteral("appPid")).isDouble()) {
                     valid = false;
                     break;
                 }
@@ -287,6 +337,7 @@ int main(int argc, char **argv)
             }
             anchor = QRect(x.toInt(), y.toInt(), width.toInt(), height.toInt());
             edge = requestedEdge;
+            item->setProperty("edge", edge);
             if (windows != currentWindows) {
                 currentWindows = windows;
                 item->setProperty("windows", windows.toVariantList());

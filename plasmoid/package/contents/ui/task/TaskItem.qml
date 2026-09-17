@@ -662,7 +662,10 @@ AbilityItem.BasicItem {
     function updateIsolatedPreview() {
         var windows = isGroupParent ? subWindows.previewWindows() : [];
         if (!isGroupParent && model.WinIdList && model.WinIdList.length > 0) {
-            windows.push({uuid: String(model.WinIdList[0]), title: String(model.display || appName), minimized: isMinimized});
+            windows.push({uuid: String(model.WinIdList[0]), appName: String(model.AppName || appName || ""),
+                title: String(model.display || appName),
+                launcherUrl: String(model.LauncherUrlWithoutIcon || model.LauncherUrl || launcherUrl || ""),
+                appPid: Number(model.AppPid || 0), minimized: isMinimized});
         }
         var anchor = isolatedPreviewAnchor();
         if (!anchor) {
@@ -686,6 +689,14 @@ AbilityItem.BasicItem {
                 tasksModel.requestToggleMinimized(modelIndex());
             }
             tasksModel.requestActivate(modelIndex());
+        }
+    }
+
+    function closePreviewUuid(uuid) {
+        if (isGroupParent) {
+            subWindows.closePreviewUuid(uuid);
+        } else if (model.WinIdList && String(model.WinIdList[0]) === uuid) {
+            tasksModel.requestClose(modelIndex());
         }
     }
 

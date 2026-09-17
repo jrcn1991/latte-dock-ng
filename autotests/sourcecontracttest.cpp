@@ -3724,6 +3724,7 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     QVERIFY(managerSource.contains(QStringLiteral("QUuid")));
     QVERIFY(managerSource.contains(QStringLiteral("TypeHeartbeat")));
     QVERIFY(managerSource.contains(QStringLiteral("TypeActivate")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeClose")));
     QVERIFY(managerSource.contains(QStringLiteral("TypeMove")));
     QVERIFY(managerSource.contains(QStringLiteral("TypeClosed")));
     QVERIFY(!managerSource.contains(QStringLiteral("waitForStarted")));
@@ -3745,6 +3746,12 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     QVERIFY(helperSource.contains(QStringLiteral("IdleLeaseMs")));
     QVERIFY(helperSource.contains(QStringLiteral("isBoundedNumber")));
     QVERIFY(helperSource.contains(QStringLiteral("QStringLiteral(\"move\")")));
+    QVERIFY(helperSource.contains(QStringLiteral("setDesktopFileName")));
+    QVERIFY(helperSource.contains(QStringLiteral("org.kde.latte-dock.preview")));
+    QVERIFY(helperSource.contains(QStringLiteral("KLocalizedQmlContext")));
+    QVERIFY(helperSource.contains(QStringLiteral("Plasma::Theme plasmaTheme")));
+    QVERIFY(!helperSource.contains(QStringLiteral("app.setPalette(plasmaTheme.palette())")));
+    QVERIFY(helperSource.contains(QStringLiteral("Plasma::Theme::TextColor")));
 
     // Capture stays asynchronous and is resolved per window so one failed
     // PipeWire handshake cannot take down the whole preview dialog.
@@ -3753,13 +3760,20 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     const QString captureSource = QString::fromUtf8(capture.readAll());
     QVERIFY(captureSource.contains(QStringLiteral("PipeWireSourceItem")));
     QVERIFY(captureSource.contains(QStringLiteral("ScreencastingRequest")));
-    QVERIFY(captureSource.contains(QStringLiteral("uuid: source.parent.uuid")));
+    QVERIFY(captureSource.contains(QStringLiteral("uuid: source.uuid")));
 
     QFile preview(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/Preview.qml"));
     QVERIFY(preview.open(QFile::ReadOnly));
     const QString previewSource = QString::fromUtf8(preview.readAll());
     QVERIFY(previewSource.contains(QStringLiteral("asynchronous: true")));
     QVERIFY(previewSource.contains(QStringLiteral("TapHandler")));
+    QVERIFY(previewSource.contains(QStringLiteral("widgets/background")));
+    QVERIFY(previewSource.contains(QStringLiteral("Kirigami.Units.gridUnit * 16")));
+    QVERIFY(previewSource.contains(QStringLiteral("Kirigami.Units.gridUnit * 8")));
+    QVERIFY(previewSource.contains(QStringLiteral("window-close")));
+    QVERIFY(previewSource.contains(QStringLiteral("Mpris.Mpris2Model")));
+    QVERIFY(previewSource.contains(QStringLiteral("media-playback-pause")));
+    QVERIFY(previewSource.contains(QStringLiteral("icon.color: root.popupTextColor")));
 
     // The helper is built and installed alongside the dock, and the feature is
     // opt-in: the legacy in-process preview scene stays unloaded regardless of
@@ -3769,6 +3783,16 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     const QString cmakeSource = QString::fromUtf8(cmake.readAll());
     QVERIFY(cmakeSource.contains(QStringLiteral("add_executable(latte-dock-ng-preview")));
     QVERIFY(cmakeSource.contains(QStringLiteral("previewprocess.cpp")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("org.kde.latte-dock.preview.desktop")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("KF6::I18nQml")));
+
+    QFile helperDesktop(QStringLiteral(
+        LATTE_SOURCE_DIR "/plasmoid/org.kde.latte-dock.preview.desktop.cmake"));
+    QVERIFY(helperDesktop.open(QFile::ReadOnly));
+    const QString helperDesktopSource = QString::fromUtf8(helperDesktop.readAll());
+    QVERIFY(helperDesktopSource.contains(QStringLiteral("Exec=@CMAKE_INSTALL_PREFIX@/bin/latte-dock-ng-preview")));
+    QVERIFY(helperDesktopSource.contains(QStringLiteral(
+        "X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1")));
 
     QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
     QVERIFY(mainQml.open(QFile::ReadOnly));

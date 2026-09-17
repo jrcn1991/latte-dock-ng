@@ -5,10 +5,11 @@ import org.kde.pipewire as PipeWire
 import org.kde.taskmanager as TaskManager
 PipeWire.PipeWireSourceItem {
     id: source
+    required property string uuid
     // Invisible sources pause capture, so never bind visibility to ready.
     nodeId: request.nodeId
     TaskManager.ScreencastingRequest {
         id: request
-        uuid: source.parent.uuid
+        uuid: source.uuid
     }
 }

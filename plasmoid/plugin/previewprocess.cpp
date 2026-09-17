@@ -28,6 +28,7 @@ const QString TypeMove = QStringLiteral("move");
 const QString TypeHide = QStringLiteral("hide");
 const QString TypeHeartbeat = QStringLiteral("heartbeat");
 const QString TypeActivate = QStringLiteral("activate");
+const QString TypeClose = QStringLiteral("close");
 const QString TypeClosed = QStringLiteral("closed");
 // Validate a window descriptor before it crosses the process boundary. Only
 // identity metadata is allowed; image data must never travel through the pipe.
@@ -36,7 +37,10 @@ bool isValidWindow(const QVariant &window)
     const QVariantMap map = window.toMap();
     return map.value(QStringLiteral("uuid")).canConvert<QString>()
         && !QUuid(map.value(QStringLiteral("uuid")).toString()).isNull()
-        && map.value(QStringLiteral("title")).canConvert<QString>();
+        && map.value(QStringLiteral("title")).canConvert<QString>()
+        && map.value(QStringLiteral("appName")).canConvert<QString>()
+        && map.value(QStringLiteral("launcherUrl")).canConvert<QString>()
+        && map.value(QStringLiteral("appPid")).canConvert<int>();
 }
 }
 PreviewProcess::PreviewProcess(QObject *parent) : QObject(parent)
@@ -208,15 +212,19 @@ void PreviewProcess::read()
             }
             continue;
         }
-        if (type == TypeActivate) {
+        if (type == TypeActivate || type == TypeClose) {
             // The UUID is re-validated against the windows the dock most
             // recently sent, so a stale or forged click cannot activate an
             // arbitrary window.
             const QString uuid = reply.value(QStringLiteral("uuid")).toString();
             for (const auto &window : std::as_const(m_windows)) {
                 if (!uuid.isEmpty() && window.toMap().value(QStringLiteral("uuid")).toString() == uuid) {
-                    Q_EMIT activateRequested(uuid);
-                    hide();
+                    if (type == TypeActivate) {
+                        Q_EMIT activateRequested(uuid);
+                        hide();
+                    } else {
+                        Q_EMIT closeRequested(uuid);
+                    }
                     break;
                 }
             }

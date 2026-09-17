@@ -28,8 +28,8 @@ helper ignores them and lets the dock watchdog decide.
 
 Dock to helper:
 
-- `show`: `serial`, `windows[]` (`uuid`, `title`, `minimized`), `x`, `y`,
-  `width`, `height`, `edge`.
+- `show`: `serial`, `windows[]` (`uuid`, `appName`, `title`, `launcherUrl`,
+  `appPid`, `minimized`), `x`, `y`, `width`, `height`, `edge`.
 - `move`: `serial`, `x`, `y`, `width`, `height`, `edge` (geometry only).
 - `hide`: `serial`.
 
@@ -37,6 +37,7 @@ Helper to dock:
 
 - `heartbeat`: `serial`, `visible`, `hovered` (also acts as the watchdog ping).
 - `activate`: `serial`, `uuid`.
+- `close`: `serial`, `uuid`.
 - `closed`: `serial` (announced on clean shutdown).
 
 Bounds: 64 KiB frames, at most nine windows, UUIDs validated with `QUuid`,
@@ -135,6 +136,57 @@ force a repaint. Trace after the fix:
 
 This also explains why task switches (window-list change -> repaint) moved the
 surface while in-icon zoom moves did not.
+
+### 5. Match the Plasma 6 task-manager preview layout
+
+The initial helper UI was only a diagnostic card: its thumbnail was above the
+title, every card drew a separate rounded rectangle and the transparent helper
+surface had no Plasma dialog background. It did not resemble Plasma 6's task
+preview even after positioning worked.
+
+The helper now follows Plasma 6.7's `ToolTipInstance.qml` geometry and visual
+structure: a `16 * gridUnit` card, application name and two-line window title
+above an `8 * gridUnit` thumbnail, a close button, themed hover highlight and
+thumbnail shadow. Group members flow horizontally for horizontal docks and
+vertically for vertical docks. Because the layer-shell helper is not a
+`PlasmaQuick::Dialog`, it explicitly draws the Plasma `widgets/background`
+frame around the shared preview surface. Close requests cross the same bounded
+protocol and are revalidated by UUID against the current task model.
+
+The standalone helper also needs its own hidden
+`org.kde.latte-dock.preview.desktop` entry and must set that desktop identity
+before constructing `QApplication`. KWin 6.7 authorizes privileged Wayland
+interfaces by resolving the client PID's executable path and finding a desktop
+entry whose `Exec` resolves to that exact path. Reusing the main Latte desktop
+identity is insufficient because its `Exec` points at `latte-dock-ng`, not
+`latte-dock-ng-preview`. Without the matching entry KWin withholds
+`zkde_screencast_unstable_v1`; the helper surface and placeholder work, but
+every live capture request fails.
+
+Loading PlasmaCore in a bare `QQuickView` also initialized its KI18n QML
+context from the QML type-loader thread, producing
+`QObject::installEventFilter(): Cannot filter events for objects in a different
+thread.` The helper creates and installs `KLocalizedQmlContext` on the engine
+from the GUI thread before importing Plasma QML. This keeps startup warning-free
+while preserving translated Plasma components.
+
+A bare helper also starts with the normal application palette, while the
+`widgets/background` SVG follows the Plasma theme. With a dark Plasma theme
+this produced a correct dark popup frame but nearly black title text and
+buttons, making the entire header appear absent. Applying
+`Plasma::Theme::palette()` to `QApplication` is both insufficient and changes
+the colorized SVG variant, which can turn the already-correct dark popup light.
+The helper leaves the application palette alone, injects only
+`Plasma::Theme::TextColor` into the root and refreshes it on theme changes;
+labels and symbolic button icons use that color explicitly, matching the
+foreground normally propagated by `PlasmaQuick::Dialog`.
+
+The window descriptor also carries the launcher's URL and application PID. A
+helper-local `Mpris2Model` uses the same `playerForLauncherUrl()` lookup as the
+Plasma 6 task manager, and shows track/artist plus previous, play/pause and next
+controls below the thumbnail for the first window in the group. MPRIS commands
+go directly to the session bus; window activation and closing remain dock-owned
+and cross the validated helper protocol.
 
 ## Diagnostics that helped
 

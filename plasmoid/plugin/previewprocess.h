@@ -30,6 +30,7 @@ public:
 Q_SIGNALS:
     void stateChanged();
     void activateRequested(const QString &uuid);
+    void closeRequested(const QString &uuid);
 private:
     void start();
     void send();

@@ -194,6 +194,11 @@ PlasmoidItem {
             }
             root.isolatedPreviewTask = null;
         }
+        onCloseRequested: (uuid) => {
+            if (root.isolatedPreviewTask) {
+                root.isolatedPreviewTask.closePreviewUuid(uuid);
+            }
+        }
     }
 
     // Only metadata crosses the process boundary. The legacy preview Loader
