@@ -138,6 +138,7 @@ jobs:
             build_args+=(--build-arg "${{ matrix.build_args }}")
           fi
           docker build --file docker/${{ matrix.dockerfile }} \
+            --build-arg USE_MIRRORS=false \
             "${build_args[@]}" \
             --tag latte-verify-${{ matrix.distro }} docker
 
@@ -194,6 +195,7 @@ jobs:
             build_args+=(--build-arg "${{ matrix.build_args }}")
           fi
           docker build --file docker/${{ matrix.dockerfile }} \
+            --build-arg USE_MIRRORS=false \
             "${build_args[@]}" \
             --tag latte-package-${{ matrix.distro }} docker
 
