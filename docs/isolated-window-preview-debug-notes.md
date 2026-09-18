@@ -77,7 +77,9 @@ KWin script: the window was placed at 0,0).
 Fix: the helper is a `QQuickView` configured as a **LayerShellQt** overlay
 (`LayerOverlay`, `KeyboardInteractivityNone`, `exclusiveZone=-1`, anchors
 `Top|Left`). Position is expressed as layer-shell margins, which KWin honours.
-X11 falls back to `QWindow::setPosition()`.
+The helper is Wayland-only and must not reintroduce direct `QWindow` positioning:
+KWin ignores it for the layer-shell surface even when Qt reports the requested
+coordinates.
 
 Verification (KWin window dump):
 

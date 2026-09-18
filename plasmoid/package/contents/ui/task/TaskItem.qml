@@ -616,6 +616,37 @@ AbilityItem.BasicItem {
         root.forcePreviewsHiding(debugtext);
     }
 
+    // Highlighting must use the same visual hover owner as isolated previews.
+    // The inner MouseArea can exit while the enlarged icon still owns hover.
+    readonly property bool highlightHoverActive: visualContainsMouse && root.highlightWindows
+        && !isLauncher && !isSeparator && !isStartup && !root.contextMenu
+        && !root.inEditMode && !root.disableAllWindowsFunctionality
+    property var highlightedHoverIds: []
+
+    onHighlightHoverActiveChanged: {
+        if (highlightHoverActive) {
+            highlightHoverDelay.restart();
+        } else {
+            highlightHoverDelay.stop();
+            if (highlightedHoverIds.length > 0) {
+                root.windowsHovered(highlightedHoverIds, false);
+                highlightedHoverIds = [];
+            }
+        }
+    }
+
+    Timer {
+        id: highlightHoverDelay
+        interval: Math.min(250, Math.max(150, plasmoid.configuration.previewsDelay))
+        onTriggered: {
+            if (taskItem.highlightHoverActive) {
+                taskItem.highlightedHoverIds = taskItem.isGroupParent
+                    ? subWindows.presentableWindowIds() : model.WinIdList;
+                root.windowsHovered(taskItem.highlightedHoverIds, true);
+            }
+        }
+    }
+
     // Visual hover is authoritative during parabolic zoom; the ordinary
     // MouseArea can lose ownership while the enlarged icon is still hovered.
     onVisualContainsMouseChanged: {
@@ -1165,6 +1196,9 @@ AbilityItem.BasicItem {
     }
 
     Component.onDestruction: {
+        if (highlightedHoverIds.length > 0) {
+            root.windowsHovered(highlightedHoverIds, false);
+        }
         root.draggingFinished.disconnect(handlerDraggingFinished);
         root.publishTasksGeometries.disconnect(slotPublishGeometries);
         root.showPreviewForTasks.disconnect(slotShowPreviewForTasks);

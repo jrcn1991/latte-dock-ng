@@ -3738,15 +3738,16 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
 
     // The helper owns the popup. A cross-process xdg_popup is impossible (no
     // transientParent in a separate client), so the surface must be a
-    // layer-shell overlay positioned with anchors + margins; a raw window
-    // position request is only valid on the non-Wayland path.
+    // layer-shell overlay positioned with anchors + margins. This project is
+    // Wayland-only, so a raw X11 window-position fallback must not return.
     QFile helper(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/main.cpp"));
     QVERIFY(helper.open(QFile::ReadOnly));
     const QString helperSource = QString::fromUtf8(helper.readAll());
     QVERIFY(helperSource.contains(QStringLiteral("LayerShellQt::Window::get")));
     QVERIFY(helperSource.contains(QStringLiteral("setMargins")));
     QVERIFY(helperSource.contains(QStringLiteral("setDesiredSize")));
-    QVERIFY(helperSource.contains(QStringLiteral("startsWith(QLatin1String(\"wayland\"))")));
+    QVERIFY(!helperSource.contains(QStringLiteral("platformName")));
+    QVERIFY(!helperSource.contains(QStringLiteral("setPosition(pos)")));
     QVERIFY(helperSource.contains(QStringLiteral("IdleLeaseMs")));
     QVERIFY(helperSource.contains(QStringLiteral("isBoundedNumber")));
     QVERIFY(helperSource.contains(QStringLiteral("QStringLiteral(\"move\")")));
@@ -3756,6 +3757,21 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     QVERIFY(helperSource.contains(QStringLiteral("Plasma::Theme plasmaTheme")));
     QVERIFY(!helperSource.contains(QStringLiteral("app.setPalette(plasmaTheme.palette())")));
     QVERIFY(helperSource.contains(QStringLiteral("Plasma::Theme::TextColor")));
+
+    QFile windowBackend(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/plugin/windowviewbackend.cpp"));
+    QVERIFY(windowBackend.open(QFile::ReadOnly));
+    const QString windowBackendSource = QString::fromUtf8(windowBackend.readAll());
+    QVERIFY(windowBackendSource.contains(QStringLiteral("org.kde.KWin.HighlightWindow")));
+    QVERIFY(windowBackendSource.contains(QStringLiteral("/org/kde/KWin/HighlightWindow")));
+    QVERIFY(windowBackendSource.contains(QStringLiteral("setHighlightedWindows")));
+    QVERIFY(windowBackendSource.contains(QStringLiteral("cancelHighlightWindows")));
+
+    QFile tasksRoot(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(tasksRoot.open(QFile::ReadOnly));
+    const QString tasksRootSource = QString::fromUtf8(tasksRoot.readAll());
+    QVERIFY(tasksRootSource.contains(QStringLiteral("windowEffectsBackend.setHighlightedWindows")));
+    QVERIFY(tasksRootSource.contains(QStringLiteral("windowEffectsBackend.cancelHighlightWindows")));
+    QVERIFY(!tasksRootSource.contains(QStringLiteral("windowsHovered.connect(backend.windowsHovered)")));
 
     // Capture stays asynchronous and is resolved per window so one failed
     // PipeWire handshake cannot take down the whole preview dialog.

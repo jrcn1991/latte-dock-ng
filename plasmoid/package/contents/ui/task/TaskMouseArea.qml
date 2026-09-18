@@ -64,9 +64,6 @@ MouseArea {
                     //! when the previews are already shown, update them immediately
                     taskItem.showPreviewWindow();
 
-                    if (taskItem.isWindow && root.highlightWindows) {
-                        root.windowsHovered(model.WinIdList, taskItem.containsMouse);
-                    }
                 }
             }
         }
@@ -129,10 +126,6 @@ MouseArea {
             taskItem.clearParabolicFromExternalPosition();
         }
 
-        ////disable hover effect///
-        if (isWindow && root.highlightWindows && !containsMouse) {
-            root.windowsHovered(model.WinIdList, false);
-        }
     }
 
     // containmentEditing is polled once by the root task manager because the
@@ -288,7 +281,7 @@ MouseArea {
                 // NoneAction or any unhandled action: do nothing
             }
 
-            backend.cancelHighlightWindows();
+            root.cancelHighlightWindows();
         }
 
         pressed = false;
@@ -423,9 +416,6 @@ MouseArea {
                     taskItem.showPreviewWindow();
                 }
 
-                if (taskItem.isWindow && root.highlightWindows) {
-                    root.windowsHovered(model.WinIdList, taskItem.containsMouse);
-                }
             }
         }
     }

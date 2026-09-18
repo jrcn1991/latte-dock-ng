@@ -206,21 +206,14 @@ int main(int argc, char **argv)
 #endif
             view.resize(size);
         }
-        if (QGuiApplication::platformName().startsWith(QLatin1String("wayland"))) {
-            // Layer-shell positions relative to the chosen output's origin.
-            const QMargins margins(pos.x() - bounds.x(), pos.y() - bounds.y(), 0, 0);
-            if (margins != appliedMargins) {
-                appliedMargins = margins;
-                layer->setMargins(margins);
-                // A margin-only layer-shell change does not damage the scene
-                // graph, so Qt never commits the wl_surface and the compositor
-                // keeps the previous position. Force a repaint so the new
-                // margins are committed on the next frame.
-                view.update();
-            }
-        } else {
-            // X11 honours direct window placement.
-            view.setPosition(pos);
+        // Layer-shell positions relative to the chosen Wayland output's
+        // origin. A margin-only change does not damage the scene graph, so Qt
+        // would not commit the wl_surface without the explicit update.
+        const QMargins margins(pos.x() - bounds.x(), pos.y() - bounds.y(), 0, 0);
+        if (margins != appliedMargins) {
+            appliedMargins = margins;
+            layer->setMargins(margins);
+            view.update();
         }
     };
     QObject::connect(item, SIGNAL(activate(QString)), &view, SLOT(activate(QString)));

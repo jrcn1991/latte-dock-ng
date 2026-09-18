@@ -374,6 +374,14 @@ PlasmoidItem {
     signal publishTasksGeometries();
     signal windowsHovered(variant winIds, bool hovered)
 
+    function cancelHighlightWindows() {
+        windowEffectsBackend.cancelHighlightWindows();
+    }
+
+    onWindowsHovered: function(winIds, hovered) {
+        windowEffectsBackend.setHighlightedWindows(winIds, hovered);
+    }
+
 
     onScrollingEnabledChanged: {
         updateListViewParent();
@@ -859,6 +867,13 @@ PlasmoidItem {
         Component.onCompleted: {
             groupDialog = groupDialogGhost;
         }
+    }
+
+    // Latte owns highlighting instead of delegating it to Plasma's private
+    // task-manager backend. That backend differs across Plasma versions and
+    // its legacy implementation does not understand Wayland window UUIDs.
+    LatteTasks.WindowViewBackend {
+        id: windowEffectsBackend
     }
 
     Item {
@@ -1567,7 +1582,6 @@ PlasmoidItem {
 
     Component.onCompleted:  {
         root.activateWindowView.connect(backend.activateWindowView);
-        root.windowsHovered.connect(backend.windowsHovered);
         updateListViewParent();
 
         if (root.contextMenuComponent.status === Component.Error) {
@@ -1577,7 +1591,7 @@ PlasmoidItem {
 
     Component.onDestruction: {
         root.activateWindowView.disconnect(backend.activateWindowView);
-        root.windowsHovered.disconnect(backend.windowsHovered);
+        root.cancelHighlightWindows();
     }
 
     //BEGIN states
