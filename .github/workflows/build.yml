@@ -161,6 +161,12 @@ jobs:
           - distro: fedora
             dockerfile: Dockerfile.fedora
             format: rpm
+          - distro: opensuse
+            dockerfile: Dockerfile.opensuse
+            format: rpm
+          - distro: mageia
+            dockerfile: Dockerfile.mageia
+            format: rpm
           - distro: debian13
             dockerfile: Dockerfile.debian
             build_args: DEBIAN_BASE=trixie

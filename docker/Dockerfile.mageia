@@ -21,6 +21,7 @@ RUN dnf upgrade -y --refresh && \
       lib64plasma-devel lib64plasmaactivities-devel lib64plasmaactivitiesstats-devel \
       lib64plasma-workspace-devel lib64kwayland-devel \
       lib64kf6config-devel lib64kf6coreaddons-devel lib64kf6guiaddons-devel lib64kf6dbusaddons-devel \
+      lib64kf6kcmutils6 lib64kf6newstuffcore6 lib64kirigami6 \
       lib64kf6declarative-devel lib64kf6itemmodels-devel lib64kf6xmlgui-devel lib64kf6iconthemes-devel \
       lib64kf6kio-devel lib64kf6i18n-devel lib64kf6notifications-devel \
       lib64kf6newstuff-devel lib64kf6archive-devel lib64kf6globalaccel-devel \
