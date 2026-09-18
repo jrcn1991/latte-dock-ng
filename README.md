@@ -99,9 +99,9 @@ Prebuilt packages are attached to every
   - `latte-dock-ng_<ver>-1+deb13u1_amd64.deb` — built on Debian 13
     (trixie), links `libplasma6`; the `+deb13u1` revision marks the
     Debian 13 (stable) build
-- **`.rpm`** — built on Fedora 44; installable on any RPM distro shipping
-  Plasma 6.3+ and glibc >= 2.34: Fedora 42+, openSUSE Tumbleweed/Leap 16,
-  Mageia 10+
+- **`.rpm`** — one native build is published per RPM family: Fedora, openSUSE
+  Tumbleweed, and Mageia 10+. Each RPM is built and install-tested on its
+  target distribution; do not substitute the Fedora RPM on openSUSE or Mageia.
 - **`pkg.tar.zst`** — Arch Linux
 
 Every binary package format is install-checked automatically on its target
