@@ -70,7 +70,7 @@ void TasksPluginUnitTest::registersQmlTypes()
     QVERIFY(object);
     QVERIFY(object->property("windowView").value<QObject *>());
     // The isolated preview manager must be constructible from the tasks
-    // module; its absence would silently break the opt-in preview path.
+    // module; its absence would silently break the configured preview path.
     QVERIFY(object->property("preview").value<QObject *>());
 
     QVERIFY(qmlTypeId("org.kde.latte.private.tasks", 0, 1, "ContextMenuActionsBackend") >= 0);

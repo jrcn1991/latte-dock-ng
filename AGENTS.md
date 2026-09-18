@@ -160,8 +160,7 @@ When testing changes to latte-dock-ng, follow this exact workflow:
   `view.cpp`, `storage.cpp`, and `AppletItem.qml`.
 - Use `-j8` for project builds unless a command has a specific resource limit.
 - User configuration normally disables window previews and retains only title
-  tooltips; treat preview rendering as inactive unless explicitly enabled for a
-  regression test.
+  tooltips; the task hover-action setting is the authoritative preview gate.
 - The application icon is `latte-dock-ng`; never fall back to the legacy
   `latte-dock` name because third-party themes may supply old artwork for it.
 - Debian Plasma 6.3 lacks a filesystem `org.kde.plasma.plasmoid` QML module.

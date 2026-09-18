@@ -6,7 +6,8 @@ Move live window preview rendering out of the Latte Dock process so that PipeWir
 
 The feature must fail closed: if the isolated preview process is slow, unavailable, malformed, or otherwise unsafe, the preview must be hidden and the normal title tooltip must remain available.
 
-Live previews must remain disabled by default until the implementation passes the runtime and performance acceptance criteria below.
+Live previews remain disabled by the default `None` hover action. Users enable
+the isolated preview path explicitly through the task hover-action setting.
 
 ## Scope and constraints
 
@@ -135,13 +136,10 @@ A DBus-only failure caused by the test sandbox must be reproduced in an unrestri
 
 ## Runtime verification
 
-Install and launch the user-mode Debug build using `docs/development-testing-guide.md`. Start normally first, without `LATTE_ISOLATED_PREVIEWS=1`, and verify that the dock remains responsive and live previews remain off.
-
-Only after the safe baseline succeeds, opt in to isolated previews with:
-
-```bash
-LATTE_ISOLATED_PREVIEWS=1
-```
+Install and launch the user-mode Debug build using
+`docs/development-testing-guide.md`. Verify the default `None` hover action
+keeps previews off, then select Preview Windows in the Dock task hover-action
+setting and exercise the isolated helper without any environment override.
 
 Test single-window tasks, grouped tasks, minimized windows, rapid hover transitions, window close while visible, PipeWire authorization failure, helper startup timeout, manual helper termination, and Dock shutdown while the helper is visible.
 
@@ -161,7 +159,7 @@ The feature may be enabled only if:
 - GCC and Clang builds are warning-free.
 - Focused and full tests pass, apart from separately documented environment-only failures.
 
-If any criterion fails, keep `showPreviews` disabled, do not merge the PR, and retain the isolated implementation only as an opt-in development path.
+If any criterion fails, keep `showPreviews` disabled and do not merge the PR.
 
 ## Handoff checklist
 
@@ -173,12 +171,12 @@ Before asking whether the PR is mergeable, report:
 4. Normal dock runtime result.
 5. Isolated preview runtime and performance result.
 6. Remaining warnings, DBus limitations, or PipeWire failures.
-7. Whether previews remain disabled by default.
+7. Whether the default `None` hover action keeps previews disabled.
 
 ## Implementation status
 
 Implemented and tracked on the experimental `preview` branch. Runtime findings
 and their root causes are recorded in
 `docs/isolated-window-preview-debug-notes.md`; read that file before changing
-the helper surface or the protocol. Previews remain disabled by default and the
-feature is reachable only with `LATTE_ISOLATED_PREVIEWS=1`.
+the helper surface or the protocol. The default hover action keeps previews
+disabled; selecting a preview hover action enables the isolated helper.

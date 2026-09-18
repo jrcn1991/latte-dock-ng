@@ -638,7 +638,7 @@ AbilityItem.BasicItem {
         id: isolatedPreviewDelay
         // The plan bounds preview creation to a short anti-flicker delay. The
         // saved previewsDelay (650 ms by default) is tuned for the legacy
-        // in-process scene and is too slow for a tooltip-like opt-in preview.
+        // in-process scene and is too slow for a tooltip-like isolated preview.
         interval: Math.min(250, Math.max(150, plasmoid.configuration.previewsDelay))
         onTriggered: {
             if (taskItem.visualContainsMouse && root.isolatedPreviewsEnabled

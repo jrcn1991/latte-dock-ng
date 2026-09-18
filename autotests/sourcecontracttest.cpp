@@ -3718,7 +3718,10 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     QFile manager(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/plugin/previewprocess.cpp"));
     QVERIFY(manager.open(QFile::ReadOnly));
     const QString managerSource = QString::fromUtf8(manager.readAll());
-    QVERIFY(managerSource.contains(QStringLiteral("LATTE_ISOLATED_PREVIEWS")));
+    // The user-visible hover action is the only feature gate. Requiring a
+    // hidden environment variable would leave the enabled setting inert.
+    QVERIFY(!managerSource.contains(QStringLiteral("LATTE_ISOLATED_PREVIEWS")));
+    QVERIFY(managerSource.contains(QStringLiteral("QStringLiteral(\"/latte-dock-ng-preview\"),\n                     true,")));
     QVERIFY(managerSource.contains(QStringLiteral("MaxProtocolBytes")));
     QVERIFY(managerSource.contains(QStringLiteral("MaxPreviews = 9")));
     QVERIFY(managerSource.contains(QStringLiteral("MaxConsecutiveFailures")));

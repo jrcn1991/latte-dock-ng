@@ -2,7 +2,7 @@
 
 Companion to `docs/isolated-window-preview-implementation-plan.md`. This file
 records what was built, the failure modes found during runtime retests, and the
-root cause of each. Keep it updated when the opt-in preview path changes.
+root cause of each. Keep it updated when the isolated preview path changes.
 
 ## Architecture
 
@@ -18,8 +18,10 @@ PipeWire / Plasma screencasting (asynchronous, per-window)
 
 - The dock stays authoritative for task state, window identity and activation.
 - The helper owns the preview surface, capture objects and interaction.
-- The feature is opt-in via `LATTE_ISOLATED_PREVIEWS=1`; `showPreviews` stays
-  `false` in QML so the legacy in-process scene can never load.
+- The task hover-action setting is the only user-facing feature gate;
+  `showPreviews` stays `false` in QML so the legacy in-process scene can never
+  load. Selecting Preview Windows or Preview and Highlight Windows starts the
+  isolated helper lazily on the first eligible hover.
 
 ## Protocol
 
@@ -94,7 +96,7 @@ Cause B: every task change called `hide()` and re-created the surface, so
 switching paid the full delay plus a remap.
 
 Fix:
-- Clamp the opt-in show delay to 150-250 ms.
+- Clamp the isolated-preview show delay to 150-250 ms.
 - When a preview is already visible, switch the target task immediately and
   update in place (`show` with the new selection) instead of hiding.
 - `onIsolatedPreviewTaskChanged` only hides when the selection becomes empty.
@@ -201,7 +203,7 @@ and cross the validated helper protocol.
 - GCC 15.3 and Clang 22: `latte-dock-ng`, `latte-dock-ng-preview`,
   `lattasksplugin`, autotests build with zero warnings.
 - Full autotest suite: 42/42 on both compilers.
-- `sourcecontracttest` protects: opt-in gating, protocol types, bounded frames,
+- `sourcecontracttest` protects: hover-setting gating, protocol types, bounded frames,
   LayerShellQt margins, FrameAnimation, and `moveIsolatedPreview`.
 - `previewprocessunittest` drives the real asynchronous `QProcess` transport
   against a fake helper and covers the disabled gate, UUID validation, close,

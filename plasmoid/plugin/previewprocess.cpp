@@ -46,15 +46,16 @@ bool isValidWindow(const QVariant &window)
 PreviewProcess::PreviewProcess(QObject *parent)
     : PreviewProcess(QCoreApplication::applicationDirPath()
                          + QStringLiteral("/latte-dock-ng-preview"),
-                     qEnvironmentVariableIntValue("LATTE_ISOLATED_PREVIEWS") == 1,
+                     true,
                      parent)
 {
 }
 PreviewProcess::PreviewProcess(const QString &executable, bool enabled, QObject *parent)
     : QObject(parent), m_enabled(enabled), m_executable(executable)
 {
-    // Opt-in never changes saved hover preferences. Failures stay hidden until
-    // the next hover and only repeated failures disable the session.
+    // The saved hover action is authoritative in QML. This process-side gate
+    // only closes after repeated helper failures; otherwise the visible Dock
+    // setting would claim previews are enabled while silently doing nothing.
     m_watchdog.setInterval(WatchdogMs);
     m_watchdog.setSingleShot(true);
     connect(&m_watchdog, &QTimer::timeout, this, &PreviewProcess::fail);
