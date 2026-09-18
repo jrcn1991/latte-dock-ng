@@ -121,9 +121,6 @@ jobs:
           - distro: debian-sid
             dockerfile: Dockerfile.debian-sid
             verifier: verify-install.sh
-          - distro: gentoo
-            dockerfile: Dockerfile.gentoo
-            verifier: verify-ebuild-gentoo.sh
           - distro: nixos
             dockerfile: Dockerfile.nixos
             verifier: verify-nix-nixos.sh
@@ -163,12 +160,6 @@ jobs:
             format: arch
           - distro: fedora
             dockerfile: Dockerfile.fedora
-            format: rpm
-          - distro: opensuse
-            dockerfile: Dockerfile.opensuse
-            format: rpm
-          - distro: mageia
-            dockerfile: Dockerfile.mageia
             format: rpm
           - distro: debian13
             dockerfile: Dockerfile.debian

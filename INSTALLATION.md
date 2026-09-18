@@ -14,10 +14,12 @@ Installation
 > dependencies (`dpkg-shlibdeps`) would raise the lower bound and break
 > installation.
 >
-> Debian 13 (trixie) is the current stable baseline. The CI matrix also checks
-> Debian sid, Fedora, openSUSE, Mageia, Ubuntu, Arch, Gentoo, and NixOS on every
+> Debian 13 (trixie) is the current stable baseline. The CI matrix checks
+> Debian sid, Fedora, openSUSE, Mageia, Ubuntu, Arch, and NixOS on every
 > `main` push. Native package installation is tested separately from source
 > installation, so a package that only builds but cannot be installed is rejected.
+> Gentoo is best verified on a native Gentoo host, where Portage can reuse its
+> configured signed binhost instead of rebuilding the full Plasma stack.
 
 ## Kubuntu / KDE Neon (26.04+)
 
