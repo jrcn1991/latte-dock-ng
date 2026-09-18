@@ -161,12 +161,15 @@ jobs:
           - distro: fedora
             dockerfile: Dockerfile.fedora
             format: rpm
+            rpm_requires: kf6-kirigami, kf6-kcmutils, kf6-knewstuff
           - distro: opensuse
             dockerfile: Dockerfile.opensuse
             format: rpm
+            rpm_requires: kf6-kirigami, kf6-kcmutils, kf6-knewstuff
           - distro: mageia
             dockerfile: Dockerfile.mageia
             format: rpm
+            rpm_requires: lib64kirigami6, lib64kf6kcmutils6, lib64kf6newstuffcore6
           - distro: debian13
             dockerfile: Dockerfile.debian
             build_args: DEBIAN_BASE=trixie
@@ -206,7 +209,8 @@ jobs:
                 bash /src/docker/package-arch.sh "$VERSION" /build
                 pacman -U --noconfirm /build/latte-dock-ng-*.pkg.tar.zst
               elif [ "${{ matrix.format }}" = rpm ]; then
-                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION="$VERSION"
+                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION="$VERSION" \
+                  -DLATTE_RPM_PACKAGE_REQUIRES='${{ matrix.rpm_requires }}'
                 cmake --build . --parallel "$(nproc)"
                 cpack -G RPM
                 if command -v dnf >/dev/null; then
