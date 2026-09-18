@@ -5,6 +5,7 @@
 #include <QProcess>
 #include <QTimer>
 #include <QRect>
+#include <QString>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 namespace Latte::Tasks {
@@ -17,6 +18,10 @@ class PreviewProcess : public QObject
     Q_PROPERTY(bool hovered READ hovered NOTIFY stateChanged)
 public:
     explicit PreviewProcess(QObject *parent = nullptr);
+    // Dependency injection keeps protocol tests deterministic: production
+    // still resolves the installed sibling helper, while autotests use a
+    // small process that speaks the same bounded JSON-lines protocol.
+    PreviewProcess(const QString &executable, bool enabled, QObject *parent = nullptr);
     ~PreviewProcess() override;
     bool enabled() const { return m_enabled; }
     bool visible() const { return m_visible; }
@@ -50,6 +55,7 @@ private:
     int m_failures{0};
     bool m_visible{false};
     bool m_hovered{false};
+    QString m_executable;
     QProcess *m_process{nullptr};
     QTimer m_watchdog;
     QByteArray m_input;

@@ -182,4 +182,3 @@ and their root causes are recorded in
 `docs/isolated-window-preview-debug-notes.md`; read that file before changing
 the helper surface or the protocol. Previews remain disabled by default and the
 feature is reachable only with `LATTE_ISOLATED_PREVIEWS=1`.
-

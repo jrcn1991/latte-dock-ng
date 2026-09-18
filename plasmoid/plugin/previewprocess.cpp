@@ -43,11 +43,18 @@ bool isValidWindow(const QVariant &window)
         && map.value(QStringLiteral("appPid")).canConvert<int>();
 }
 }
-PreviewProcess::PreviewProcess(QObject *parent) : QObject(parent)
+PreviewProcess::PreviewProcess(QObject *parent)
+    : PreviewProcess(QCoreApplication::applicationDirPath()
+                         + QStringLiteral("/latte-dock-ng-preview"),
+                     qEnvironmentVariableIntValue("LATTE_ISOLATED_PREVIEWS") == 1,
+                     parent)
+{
+}
+PreviewProcess::PreviewProcess(const QString &executable, bool enabled, QObject *parent)
+    : QObject(parent), m_enabled(enabled), m_executable(executable)
 {
     // Opt-in never changes saved hover preferences. Failures stay hidden until
     // the next hover and only repeated failures disable the session.
-    m_enabled = qEnvironmentVariableIntValue("LATTE_ISOLATED_PREVIEWS") == 1;
     m_watchdog.setInterval(WatchdogMs);
     m_watchdog.setSingleShot(true);
     connect(&m_watchdog, &QTimer::timeout, this, &PreviewProcess::fail);
@@ -100,8 +107,7 @@ void PreviewProcess::show(const QVariantList &windows, const QRect &anchor, int 
 }
 void PreviewProcess::start()
 {
-    const QString path = QCoreApplication::applicationDirPath() + QStringLiteral("/latte-dock-ng-preview");
-    if (!QFileInfo(path).isExecutable()) {
+    if (!QFileInfo(m_executable).isExecutable()) {
         fail();
         return;
     }
@@ -118,7 +124,7 @@ void PreviewProcess::start()
     connect(m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError) { fail(); });
     connect(m_process, &QProcess::finished, this, &PreviewProcess::onFinished);
     m_watchdog.start();
-    m_process->start(path, {});
+    m_process->start(m_executable, {});
 }
 void PreviewProcess::send()
 {

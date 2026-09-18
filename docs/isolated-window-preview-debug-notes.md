@@ -200,9 +200,12 @@ and cross the validated helper protocol.
 
 - GCC 15.3 and Clang 22: `latte-dock-ng`, `latte-dock-ng-preview`,
   `lattasksplugin`, autotests build with zero warnings.
-- Full autotest suite: 41/41 on both compilers.
+- Full autotest suite: 42/42 on both compilers.
 - `sourcecontracttest` protects: opt-in gating, protocol types, bounded frames,
   LayerShellQt margins, FrameAnimation, and `moveIsolatedPreview`.
+- `previewprocessunittest` drives the real asynchronous `QProcess` transport
+  against a fake helper and covers the disabled gate, UUID validation, close,
+  activation, and geometry-only heartbeat state updates.
 - Standalone helper protocol test: heartbeats, show/hide visibility, malformed
   input tolerance, unknown-UUID rejection, clean exit on stdin close.
 - KWin placement: `show` and `move` reposition the layer surface.

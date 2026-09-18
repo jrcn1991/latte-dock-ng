@@ -838,6 +838,30 @@ target_link_libraries(taskspluginunittest
 
 latte_add_test(taskspluginunittest)
 
+add_executable(previewprocessfakehelper EXCLUDE_FROM_ALL
+    previewprocessfakehelper.cpp
+)
+target_link_libraries(previewprocessfakehelper Qt6::Core)
+
+add_executable(previewprocessunittest EXCLUDE_FROM_ALL
+    previewprocessunittest.cpp
+    ../plasmoid/plugin/previewprocess.cpp
+    ../plasmoid/plugin/previewprocess.h
+)
+add_dependencies(previewprocessunittest previewprocessfakehelper)
+target_include_directories(previewprocessunittest PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../plasmoid/plugin
+)
+target_compile_definitions(previewprocessunittest PRIVATE
+    LATTE_PREVIEW_FAKE_HELPER="$<TARGET_FILE:previewprocessfakehelper>"
+)
+target_link_libraries(previewprocessunittest
+    Qt6::Core
+    Qt6::Qml
+    Qt6::Test
+)
+latte_add_test(previewprocessunittest)
+
 
 set(containmentactionmenuunittest_SRCS
     containmentactionmenuunittest.cpp
