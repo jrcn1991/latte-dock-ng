@@ -135,7 +135,9 @@ int main(int argc, char **argv)
     layer->setLayer(LayerShellQt::Window::LayerOverlay);
     layer->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
     layer->setExclusiveZone(-1);
+#ifdef LATTE_LAYERSHELL_HAS_ACTIVATE_ON_SHOW
     layer->setActivateOnShow(false);
+#endif
     LayerShellQt::Window::Anchors anchors;
     anchors |= LayerShellQt::Window::AnchorTop;
     anchors |= LayerShellQt::Window::AnchorLeft;

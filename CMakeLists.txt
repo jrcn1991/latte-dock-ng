@@ -115,6 +115,18 @@ if(LATTE_LAYERSHELL_HAS_DESIRED_SIZE)
 else()
     message(STATUS "LayerShellQt::Window::setDesiredSize not available — using QWindow::resize fallback")
 endif()
+
+# Detect whether LayerShellQt::Window::setActivateOnShow(bool) is available.
+# Debian 13 ships an older LayerShellQt without this focus-policy setter.
+file(READ ${CMAKE_SOURCE_DIR}/cmake/CheckLayerShellActivateOnShow.cpp LATTE_LAYERSHELL_ACTIVATEONSHOW_SOURCE)
+set(CMAKE_REQUIRED_LIBRARIES LayerShellQt::Interface Qt6::Core Qt6::Gui)
+check_cxx_source_compiles("${LATTE_LAYERSHELL_ACTIVATEONSHOW_SOURCE}" LATTE_LAYERSHELL_HAS_ACTIVATE_ON_SHOW)
+unset(CMAKE_REQUIRED_LIBRARIES)
+if(LATTE_LAYERSHELL_HAS_ACTIVATE_ON_SHOW)
+    message(STATUS "LayerShellQt::Window::setActivateOnShow detected — enabled")
+else()
+    message(STATUS "LayerShellQt::Window::setActivateOnShow not available — using default focus policy")
+endif()
 find_package(KF6Declarative ${KF6_MIN_VERSION} REQUIRED CONFIG)
 
 find_package(LibTaskManager ${PLASMA_MIN_VERSION} REQUIRED)
