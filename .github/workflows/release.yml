@@ -88,7 +88,7 @@ jobs:
                 #! the plain -1 release.
                 DEBREL='1'
                 if [ '${{ matrix.distro }}' = 'debian' ]; then DEBREL='1+deb13u1'; fi
-                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\" -DLATTE_RPM_PACKAGE_REQUIRES='${{ matrix.rpm_requires }}'
+                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\" -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
                 cmake --build . --parallel \$(nproc)
                 #! source-install verification on this distro: the install
                 #! must land the binary and the desktop file

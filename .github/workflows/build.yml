@@ -210,7 +210,7 @@ jobs:
                 pacman -U --noconfirm /build/latte-dock-ng-*.pkg.tar.zst
               elif [ "${{ matrix.format }}" = rpm ]; then
                 cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION="$VERSION" \
-                  -DLATTE_RPM_PACKAGE_REQUIRES='${{ matrix.rpm_requires }}'
+                  -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
                 cmake --build . --parallel "$(nproc)"
                 cpack -G RPM
                 if command -v dnf >/dev/null; then
