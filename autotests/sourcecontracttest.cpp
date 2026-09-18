@@ -175,6 +175,7 @@ private Q_SLOTS:
     void mouseButtonEnumUsesMiddleButtonNotMidButton();
     void taskMouseAreaSkipsInactivePreviewChecks();
     void isolatedWindowPreviewProcessIsFailClosed();
+    void latteCoreQmlModuleDeclaresPlasmaCoreDependency();
     void taskFallbackTooltipRespectsLatteTooltipSetting();
     void taskTooltipUsesHoveredVisualState();
     void thinTooltipHandlesMissingTextAndRepositionsAfterShowing();
@@ -3828,6 +3829,17 @@ void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
     const QString taskItemSource = QString::fromUtf8(taskItem.readAll());
     QVERIFY(taskItemSource.contains(QStringLiteral("function moveIsolatedPreview")));
     QVERIFY(taskItemSource.contains(QStringLiteral("mapToGlobal")));
+}
+
+void SourceContractTest::latteCoreQmlModuleDeclaresPlasmaCoreDependency()
+{
+    QFile cmake(QStringLiteral(LATTE_SOURCE_DIR "/declarativeimports/core/CMakeLists.txt"));
+    QVERIFY(cmake.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(cmake.readAll());
+    // PlasmaQuick::Dialog publishes its QML metadata through plasma.core.
+    // Keep this dependency next to qt_add_qml_module so qmltyperegistrar can
+    // resolve Latte::Quick::Dialog's prototype without a build warning.
+    QVERIFY(source.contains(QStringLiteral("DEPENDENCIES org.kde.plasma.core")));
 }
 
 void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
