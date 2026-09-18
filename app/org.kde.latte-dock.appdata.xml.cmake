@@ -159,7 +159,7 @@
   <developer id="ruizhi.zhong88@gmail.com">
     <name>Ruizhi Zhong</name>
   </developer>
-  <icon type="stock">latte-dock</icon>
+  <icon type="stock">latte-dock-ng</icon>
   <project_license>GPL-3.0-only</project_license>
   <metadata_license>CC0-1.0</metadata_license>
   <screenshots>

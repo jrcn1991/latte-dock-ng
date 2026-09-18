@@ -38,7 +38,7 @@
         "Description[zh_CN]": "Latte 停靠栏的任务管理 Plasma 小程序",
         "Description[zh_TW]": "來自 Latte Dock 的工作 Plasmoid",
         "EnabledByDefault": true,
-        "Icon": "latte-dock",
+        "Icon": "latte-dock-ng",
         "Id": "org.kde.latte.plasmoid",
         "License": "GPL-3.0",
         "Name": "Latte Tasks",

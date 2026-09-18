@@ -203,6 +203,7 @@ private Q_SLOTS:
     void uniqueNameExhaustionFallsBackToRandomSuffix();
     void layoutManagerResolveAppletQuickItemThreadsVisitedSet();
     void appdataComponentIdKeepsHyphenInLastSegment();
+    void applicationMetadataUsesCurrentIconName();
     void positionShortcutHandlersDeclareSignalParameters();
     void positionShortcutHostLookupIsRecursiveAndResettable();
     void qmlCacheRevisionInvalidatesSameVersionBuilds();
@@ -4236,6 +4237,21 @@ void SourceContractTest::appdataComponentIdKeepsHyphenInLastSegment()
     QVERIFY(!src.contains(QStringLiteral("<id>org.kde.latte-dock.desktop</id>")));
     QVERIFY(src.contains(QStringLiteral("<developer id=")));
     QVERIFY(!src.contains(QStringLiteral("<developer_name>")));
+}
+
+void SourceContractTest::applicationMetadataUsesCurrentIconName()
+{
+    QFile appdata(QStringLiteral(LATTE_SOURCE_DIR "/app/org.kde.latte-dock.appdata.xml.cmake"));
+    QVERIFY(appdata.open(QFile::ReadOnly));
+    const QString appdataSource = QString::fromUtf8(appdata.readAll());
+    QVERIFY(appdataSource.contains(QStringLiteral("<icon type=\"stock\">latte-dock-ng</icon>")));
+    QVERIFY(!appdataSource.contains(QStringLiteral("<icon type=\"stock\">latte-dock</icon>")));
+
+    QFile plasmoid(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/metadata.json"));
+    QVERIFY(plasmoid.open(QFile::ReadOnly));
+    const QString plasmoidSource = QString::fromUtf8(plasmoid.readAll());
+    QVERIFY(plasmoidSource.contains(QStringLiteral("\"Icon\": \"latte-dock-ng\"")));
+    QVERIFY(!plasmoidSource.contains(QStringLiteral("\"Icon\": \"latte-dock\"")));
 }
 
 void SourceContractTest::positionShortcutHandlersDeclareSignalParameters()
