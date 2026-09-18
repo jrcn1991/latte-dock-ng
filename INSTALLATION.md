@@ -119,7 +119,7 @@ sudo zypper install \
   gcc-c++ gettext git pkgconf
 ```
 
-## Mageia (Cauldron)
+## Mageia (10+)
 
 ```bash
 sudo dnf install \
@@ -243,7 +243,7 @@ cd docker
 docker compose run --rm arch       # Arch Linux
 docker compose run --rm fedora     # Fedora 44
 docker compose run --rm opensuse   # openSUSE Tumbleweed
-docker compose run --rm mageia     # Mageia Cauldron
+docker compose run --rm mageia     # Mageia 10
 docker compose run --rm ubuntu     # Ubuntu 26.04
 docker compose run --rm debian     # Debian 13 (current stable)
 docker compose run --rm nixos      # NixOS (nixos-unstable)

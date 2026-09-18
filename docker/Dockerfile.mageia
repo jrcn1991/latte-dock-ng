@@ -1,4 +1,4 @@
-FROM mageia:cauldron
+FROM mageia:10
 
 ARG USE_MIRRORS=true
 
