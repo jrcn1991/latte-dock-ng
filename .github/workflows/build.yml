@@ -114,10 +114,6 @@ jobs:
             dockerfile: Dockerfile.debian
             verifier: verify-install.sh
             build_args: DEBIAN_BASE=trixie
-          - distro: debian-stable
-            dockerfile: Dockerfile.debian
-            verifier: verify-install.sh
-            build_args: DEBIAN_BASE=stable
           - distro: debian-sid
             dockerfile: Dockerfile.debian-sid
             verifier: verify-install.sh
@@ -173,10 +169,6 @@ jobs:
           - distro: debian13
             dockerfile: Dockerfile.debian
             build_args: DEBIAN_BASE=trixie
-            format: deb
-          - distro: debian-stable
-            dockerfile: Dockerfile.debian
-            build_args: DEBIAN_BASE=stable
             format: deb
           - distro: debian-sid
             dockerfile: Dockerfile.debian-sid
