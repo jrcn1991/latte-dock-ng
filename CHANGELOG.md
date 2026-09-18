@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+## [v1.2.49] - 2026-09-18
+
+### Added
+- Add Wayland task window highlighting through KWin's HighlightWindow effect.
+- Restore Present Windows for grouped tasks through KWin WindowView.
+- Add isolated Wayland window previews that follow the hovered task icon.
+
+### Fixed
+- Restore the original Latte Dock application icon artwork.
+- Make task hover preview and highlight actions follow the visual hover state.
+- Declare the Plasma core QML dependency required by LatteCore dialog metadata.
+- Remove the preview helper's obsolete X11 positioning fallback.
+
+### Tests
+- Add GCC and Clang coverage for Wayland window effects and QML source contracts.
+
 ## [v1.2.48] - 2026-09-15
 
 ### Fixed
