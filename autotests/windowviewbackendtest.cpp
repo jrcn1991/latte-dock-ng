@@ -151,6 +151,24 @@ private Q_SLOTS:
         QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{firstId}, {secondId}, {}}));
     }
 
+    void missingHighlightServiceIsBestEffort()
+    {
+        Latte::Tasks::WindowViewBackend backend;
+        QDBusConnection::sessionBus().unregisterObject(highlightPath);
+        QVERIFY(QDBusConnection::sessionBus().unregisterService(highlightService));
+
+        // Highlighting is optional: a KWin restart or disabled effect must not
+        // turn a hover event into a synchronous DBus failure.
+        backend.setHighlightedWindows({firstId}, true);
+        backend.cancelHighlightWindows();
+
+        QVERIFY(QDBusConnection::sessionBus().registerService(highlightService));
+        QVERIFY(QDBusConnection::sessionBus().registerObject(highlightPath, &m_highlightEffect,
+                                                              QDBusConnection::ExportAllSlots));
+        backend.setHighlightedWindows({secondId}, true);
+        QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{secondId}}));
+    }
+
 private:
     FakeWindowView m_effect;
     FakeHighlightWindow m_highlightEffect;

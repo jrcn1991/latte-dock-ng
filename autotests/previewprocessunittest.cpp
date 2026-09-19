@@ -21,6 +21,7 @@ private Q_SLOTS:
     void forgedCloseReplyIsRejected();
     void activationReplyHidesPreview();
     void moveHeartbeatUpdatesHoverState();
+    void failedHelperDisablesAfterConsecutiveCrashes();
 
 private:
     static QVariantList windows(const QString &title);
@@ -95,6 +96,27 @@ void PreviewProcessUnitTest::moveHeartbeatUpdatesHoverState()
 
     process.move(QRect(50, 60, 40, 40), 4);
     QTRY_VERIFY(process.hovered());
+}
+
+void PreviewProcessUnitTest::failedHelperDisablesAfterConsecutiveCrashes()
+{
+    // A missing executable drives the same launch-failure gate without
+    // depending on the installed preview binary or an external compositor.
+    PreviewProcess process(QStringLiteral("/definitely/missing/latte-preview-helper"), true);
+    QSignalSpy stateSpy(&process, &PreviewProcess::stateChanged);
+
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        process.show(windows(QStringLiteral("crash-%1").arg(attempt)), QRect(10, 20, 40, 40), 4);
+        QTRY_VERIFY_WITH_TIMEOUT(stateSpy.count() >= attempt + 1, 5000);
+        QVERIFY(!process.visible());
+        if (attempt < 2) {
+            QVERIFY(process.enabled());
+            process.hide();
+        }
+    }
+
+    QVERIFY(!process.enabled());
+    QVERIFY(!process.visible());
 }
 
 QTEST_GUILESS_MAIN(PreviewProcessUnitTest)

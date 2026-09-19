@@ -9,6 +9,7 @@
 #include <KPackage/PackageLoader>
 
 #include <QDir>
+#include <QFile>
 #include <QTemporaryDir>
 #include <QTest>
 
@@ -20,6 +21,7 @@ private Q_SLOTS:
     void lattePackageResolvesShellDefinitions();
     void indicatorPackageLoadsFromPluginAndResolvesDirectories();
     void indicatorPackageResolvesBundledDefaultIndicator();
+    void packagePathChangesHandleForeignMetadata();
 };
 
 void PackageUnitTest::lattePackageResolvesShellDefinitions()
@@ -72,6 +74,26 @@ void PackageUnitTest::indicatorPackageResolvesBundledDefaultIndicator()
     QCOMPARE(package.metadata().value(QStringLiteral("X-Latte-MainScript")), QStringLiteral("ui/main.qml"));
     QVERIFY(package.filePath("ui", QStringLiteral("main.qml")).endsWith(QStringLiteral("package/ui/main.qml")));
     QVERIFY(package.filePath("config", QStringLiteral("main.xml")).endsWith(QStringLiteral("package/config/main.xml")));
+}
+
+void PackageUnitTest::packagePathChangesHandleForeignMetadata()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    QFile metadata(dir.filePath(QStringLiteral("metadata.json")));
+    QVERIFY(metadata.open(QIODevice::WriteOnly | QIODevice::Text));
+    QVERIFY(metadata.write(R"({"KPlugin":{"Id":"org.example.foreign","Name":"Foreign shell"}})") > 0);
+    metadata.close();
+
+    KPackage::Package package(new Latte::Package);
+    package.setPath(dir.path());
+    QCOMPARE(package.metadata().pluginId(), QStringLiteral("org.example.foreign"));
+
+    // Switching back to Latte's own package exercises the branch that clears
+    // the fallback package after a foreign package was previously selected.
+    package.setPath(QStringLiteral(LATTE_SOURCE_DIR "/shell/package"));
+    QCOMPARE(package.metadata().pluginId(), QStringLiteral("org.kde.latte.shell"));
 }
 
 QTEST_GUILESS_MAIN(PackageUnitTest)
