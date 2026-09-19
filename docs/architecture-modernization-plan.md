@@ -59,7 +59,9 @@ make the directory layout appear modular.
 ## Work packages and dependencies
 
 Each package should be a reviewable change, with smaller slices when necessary.
-Suggested commit subjects do not authorize commits or pushes.
+Suggested commit subjects do not change the branch policy in `AGENTS.md`: work
+on `main` still requires separate commit and push approval, while validated
+work on another branch may be committed and pushed automatically.
 
 | ID | Priority | Depends on | Deliverable | Suggested commit subject |
 | --- | --- | --- | --- | --- |

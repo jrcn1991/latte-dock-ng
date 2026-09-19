@@ -20,10 +20,15 @@ when working on releases, compatibility problems or known runtime behavior.
 
 ## User Rules (always apply)
 
-1. **No auto-commit / no auto-push** — Never commit or push git changes
+1. **Main branch commit/push protection** — On `main`, never commit or push
    without explicit user approval. Commit and push are two SEPARATE approvals:
-   after committing, ask "push?". "commit" alone never implies "push".
-   Only use git read operations (diff, log, status) unless explicitly asked.
+   after committing, ask "push?". "commit" alone never implies "push". On
+   every non-`main` branch, an explicitly requested implementation may be
+   committed and pushed automatically after the required checks pass. Do not
+   silently switch branches, rewrite published history, or push a different
+   branch than the one being worked on. A user request to commit or push on
+   `main` authorizes only that requested operation; release tags and other
+   remote mutations still require their own explicit authorization.
 2. **English only** — All codebase content in English: commit messages,
    release notes/GitHub descriptions, code comments, documentation.
 3. **No AI attribution** — Commit messages must NOT include `Co-Authored-By`,
@@ -47,6 +52,19 @@ when working on releases, compatibility problems or known runtime behavior.
    authoritative state source and record the failure mode that would return if
    the constraint were removed. This context is required for both human and AI
    maintainers; do not narrate self-evident code.
+8. **Keep local design knowledge beside the implementation** — Skills, plans
+   and review notes may provide process or broad design guidance, but they are
+   not a substitute for durable component knowledge. When a feature, workaround
+   or invariant is discovered or changed, put its concise rationale next to the
+   owning C++/QML/Python/Shell implementation and add a focused test or contract
+   when practical. The comment should state the trigger, the authoritative
+   state, the ownership/lifecycle or timing constraint, and the failure mode
+   prevented. Do not paste a whole skill or plan into source comments, and do
+   not leave essential behavior explainable only by a skill file or chat history.
+   Keep AGENTS.md as the cross-component architecture and workflow charter;
+   keep component-specific details beside the code they govern. Update the
+   nearby comment and its test when behavior, supported versions or the
+   authoritative state changes.
 
 ## Development Debug & Retest Workflow
 
@@ -109,7 +127,11 @@ When testing changes to latte-dock-ng, follow this exact workflow:
    no Fatal/ASSERT, and run an A/B check against the pre-fix binary for crash
    fixes.
 
-9. **Do NOT commit or push** unless the user explicitly confirms. No auto-commit/push allowed without user permission.
+9. **Commit/push according to branch policy** — On `main`, stop after
+   validation and request the separate commit and push approvals described
+   above. On another branch, commit and push the requested implementation
+   after validation without an additional approval, unless the user explicitly
+   asks for a draft-only result or the action would rewrite published history.
 
 ## Quick references
 
@@ -175,6 +197,9 @@ When testing changes to latte-dock-ng, follow this exact workflow:
 - Keep detailed component invariants next to their implementation. In
   particular, `TaskItem.qml` documents the task-tooltip ownership, hover and
   enable-state contract; its source-contract autotests protect that design.
-- Treat `AGENTS.md` as the high-level index and policy document. Put localized
-  failure modes and workaround rationale in English code comments where future
-  maintainers and AI tools will encounter the relevant logic.
+- Treat `AGENTS.md` as the high-level index, architecture charter and policy
+  document. Put localized feature contracts, failure modes and workaround
+  rationale in concise English comments beside the relevant implementation;
+  future maintainers and AI tools must be able to understand the behavior from
+  the code and its nearby documentation without recovering hidden skill or chat
+  context.

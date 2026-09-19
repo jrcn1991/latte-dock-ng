@@ -16,8 +16,10 @@ and [testing guide](development-testing-guide.md) before making changes.
 4. Record the current revision, tool versions, selected files and expected
    behavior. Recheck observations from the original assessment.
 5. Implement one cohesive slice, run its acceptance checks, and update the
-   ledger and handoff. Obtain separate commit and push approvals as required by
-   AGENTS.md. Do not treat this document as authorization for either action.
+   ledger and handoff. Follow the branch policy in AGENTS.md: obtain separate
+   commit and push approvals on `main`; on another branch, the requested and
+   validated implementation may be committed and pushed automatically. Do not
+   silently switch branches or rewrite published history.
 
 ## M0: Establish the baseline
 
