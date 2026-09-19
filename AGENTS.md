@@ -10,6 +10,11 @@ Shared testing/release procedures live in `docs/`: `development-testing-guide.md
 documents the autotest suite and the Runtime Retest Workflow (clean-quit and
 coredump A/B verification after runtime fixes).
 
+The staged architecture and tooling improvement backlog is documented in
+`docs/architecture-modernization-plan.md`; execution and handoff requirements
+are in `docs/architecture-modernization-implementation.md`. These documents
+describe planned work, not completed capabilities or permission to commit/push.
+
 The rules below are always in effect. Consult the later knowledge-base sections
 when working on releases, compatibility problems or known runtime behavior.
 
