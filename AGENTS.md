@@ -1,14 +1,18 @@
 # Latte Dock NG — Universal AI Instructions & Knowledge Base
 
-This is the repository's single source of truth for AI coding rules, workflows,
-architecture notes and diagnosis memory. It is tool-neutral and intended for
+This is the repository's single source of truth for AI coding rules,
+architecture principles and workflows. It is tool-neutral and intended for
 pi, Claude Code, OpenAI Codex, Cursor and every other AGENTS.md-aware assistant.
-Keep project knowledge here; do not create tool-specific `CLAUDE.md` or
-`CODEX.md` files.
+Keep cross-component rules here and local design knowledge beside its
+implementation; do not create tool-specific `CLAUDE.md` or `CODEX.md` files.
 
 Shared testing/release procedures live in `docs/`: `development-testing-guide.md`
 documents the autotest suite and the Runtime Retest Workflow (clean-quit and
 coredump A/B verification after runtime fixes).
+
+The current component map and integration boundaries are documented in
+`docs/architecture-overview.md`. Read the relevant entries before changing
+ownership, QML registration, layout coordination or process boundaries.
 
 The staged architecture and tooling improvement backlog is documented in
 `docs/architecture-modernization-plan.md`; execution and handoff requirements
@@ -182,6 +186,24 @@ When testing changes to latte-dock-ng, follow this exact workflow:
 
 ## Architecture & Compatibility Notes
 
+- **Architecture charter**: `Corona` coordinates application services; `View`
+  composes per-dock behavior; QML composes presentation and interaction.
+  Layout coordination (`app/layouts/`) and containment item arrangement
+  (`containment/plugin/layoutmanager.cpp`) are different responsibilities.
+  Keep deterministic policy separate from UI/platform adapters where practical.
+  Directory names do not imply independent libraries or a strict dependency
+  chain: consult `docs/architecture-overview.md` and actual CMake targets.
+- **State and lifetime**: designate one authoritative source for each state;
+  derived caches need explicit invalidation. Make ownership and asynchronous
+  cancellation/stale-result rules visible at component boundaries. Preserve
+  QObject thread affinity and the established shutdown order; do not infer
+  destruction safety from parent ownership alone.
+- **Integration contracts**: QML URIs/type names, D-Bus interfaces, persisted
+  configuration and plugin installation paths are compatibility surfaces.
+  Trace consumers before changing them. Prefer API capability probes for build
+  compatibility and runtime capability checks for compositor services; use
+  version checks for behavior-specific workarounds with documented evidence.
+  Preserve the preview helper's process isolation and failure fallback.
 - The application is one large executable assembled by `app/CMakeLists.txt`.
   Large runtime sources include `layoutmanager.cpp`, `containmentinterface.cpp`,
   `view.cpp`, `storage.cpp`, and `AppletItem.qml`.
@@ -203,3 +225,82 @@ When testing changes to latte-dock-ng, follow this exact workflow:
   future maintainers and AI tools must be able to understand the behavior from
   the code and its nearby documentation without recovering hidden skill or chat
   context.
+
+## Coding Standards
+
+Apply these rules to new and changed code. Existing patterns are context, not
+permission to extend a known defect; keep unrelated cleanup out of the patch.
+
+### C++ and Qt
+
+- Use C++20 and the dependency floors in `CMakeLists.txt`. Follow nearby naming
+  and `.clang-format`; run `formatter.sh` only on touched C++ files and inspect
+  the diff. Its `Standard: Latest` setting does not raise the language standard.
+- Prefer const-correct interfaces, initialized members, `override`, and scoped
+  resource ownership. Use `auto` when it preserves readability, explicit types
+  when units/conversions matter, and `std::as_const` for read-only iteration of
+  mutable Qt containers when appropriate. Use `QStringLiteral` for fixed QString
+  values and KDE translation APIs for user-visible text.
+- Use QObject parent ownership or explicit RAII ownership without competing
+  owners. Guard retained non-owning QObject references with `QPointer` when the
+  referenced object can disappear independently; ordinary pointers/references
+  are valid when lifetime is guaranteed. `QPointer` is not thread synchronization
+  and does not prove an object is safe during partially completed destruction.
+- Prefer typed signal/slot connections and context-bound lambdas. Do not capture
+  short-lived locals by reference in deferred callbacks; guard independently
+  owned captures and reject stale results after state changes. Disconnecting a
+  producer alone is not a substitute for validating already queued work.
+- Keep UI objects on their owning thread. Use bounded asynchronous work for
+  potentially expensive I/O or computation; do not move QObjects to workers
+  without an explicit ownership/thread design. Avoid blocking waits or nested
+  event loops in interactive paths. Destructors must not depend on starting new
+  asynchronous work that requires a shutting-down event loop to finish.
+- For mutable C++ properties used in QML bindings, provide correct change
+  notification (`NOTIFY` or supported bindable semantics); use `CONSTANT` only
+  for values invariant over the object's lifetime. Notify on actual changes.
+- Validate external input, report actionable failures through the appropriate
+  logging category, and preserve documented fallbacks. New IPC needs bounded
+  input, failure handling and timeout/cancellation policy appropriate to its
+  transport; do not add silent success paths for failed operations.
+
+### QML
+
+- Declare typed properties and explicit component inputs/signals where the
+  interface is known. Qualify cross-object access with an id or explicit input;
+  avoid adding hidden context dependencies or mutating another component's
+  private state. Preserve necessary dynamic Plasma interfaces with local rationale.
+- Keep visual state and animation in QML; centralize shared decisions in a
+  clearly owned component or C++ policy object. Do not relocate every small
+  presentation decision to C++ merely for uniformity.
+- Prefer bindings for ongoing state synchronization. Imperative writes must
+  account for binding removal. `Component.onCompleted` initializes a component;
+  it does not replace subscriptions to later state changes. Give timers,
+  animations and deferred handlers a defined deactivation/teardown path.
+- Preserve module URI, type registration and import/install contracts. Verify
+  the generated `qmldir`, plugin and referenced `.qmltypes` metadata; filenames
+  differ by target and are not universally `plugins.qmltypes`. Test host-dependent
+  plugins in their intended host as well as checking tooling metadata.
+
+### Build, scripts and validation
+
+- For new targets use target-scoped sources, includes, definitions and link
+  dependencies. Avoid expanding global flags or include paths. Declare generated
+  output dependencies and preserve PIC, AUTOMOC and host symbol requirements.
+  Prefer linking shared production logic into tests when a suitable target
+  exists; direct source compilation remains valid for focused isolated tests.
+- Use capability probes and small adapters for compatibility. Document any
+  version-specific exception and its removal condition next to implementation.
+  When adding dependencies, inspect and update affected CI, Docker, Nix and
+  packaging definitions; distinguish build dependencies from runtime imports.
+- Quote shell paths and variables, propagate failures (including pipelines),
+  and keep temporary/test data isolated from user configuration. Document
+  intentionally tolerated failures. Do not hard-code developer-specific paths
+  in reusable tooling.
+- Test production behavior rather than duplicating its algorithm. Cover the
+  relevant boundary, failure and destruction cases for risky changes. Use
+  isolated D-Bus sessions and bounded event-driven waits. Source contracts are
+  useful regression locks but do not prove live QML/Wayland behavior.
+- Run affected GCC/Clang builds, tests and QML checks for code/build changes;
+  follow the canonical desktop retest for runtime changes. Documentation-only
+  edits need accuracy/link/whitespace review, not a rebuild or desktop restart.
+  Report skipped or unavailable checks explicitly; do not call them passed.
