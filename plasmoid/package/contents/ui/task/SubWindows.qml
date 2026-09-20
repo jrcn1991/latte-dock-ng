@@ -227,6 +227,49 @@ Item{
         return true;
     }
 
+    function previewWindows() {
+        windowsLocalModel.rootIndex = taskItem.modelIndex();
+        var windows = [];
+        for (var i = 0; i < windowsLocalModel.items.count; ++i) {
+            var kid = windowsLocalModel.items.get(i);
+            if (isActivatableChild(kid)) {
+                windows.push({uuid: String(kid.model.WinIdList[0]),
+                    appName: String(kid.model.AppName || ""),
+                    title: String(kid.model.display || ""),
+                    launcherUrl: String(kid.model.LauncherUrlWithoutIcon || kid.model.LauncherUrl || ""),
+                    appPid: Number(kid.model.AppPid || 0),
+                    minimized: kid.model.IsMinimized === true});
+            }
+        }
+        return windows;
+    }
+    function activatePreviewUuid(uuid) {
+        windowsLocalModel.rootIndex = taskItem.modelIndex();
+        // Resolve the UUID again at click time: model indices can change while
+        // the separate preview process is displaying the previous selection.
+        for (var i = 0; i < windowsLocalModel.items.count; ++i) {
+            var kid = windowsLocalModel.items.get(i);
+            if (isActivatableChild(kid) && String(kid.model.WinIdList[0]) === uuid) {
+                activateChild(i);
+                return;
+            }
+        }
+    }
+
+    function closePreviewUuid(uuid) {
+        windowsLocalModel.rootIndex = taskItem.modelIndex();
+        // Resolve the model index at click time because closing another group
+        // member can reorder the remaining delegates while the preview stays
+        // open.
+        for (var i = 0; i < windowsLocalModel.items.count; ++i) {
+            var kid = windowsLocalModel.items.get(i);
+            if (isActivatableChild(kid) && String(kid.model.WinIdList[0]) === uuid) {
+                tasksModel.requestClose(tasksModel.makeModelIndex(index, i));
+                return;
+            }
+        }
+    }
+
     function presentableWindowIds() {
         windowsLocalModel.rootIndex = taskItem.modelIndex();
         var ids = [];

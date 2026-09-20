@@ -232,6 +232,10 @@ cd "$build_dir"
 
 cmake_args=(
     -DCMAKE_INSTALL_PREFIX="${install_prefix}"
+    # Installation builds must not require the optional autotest runtime
+    # (dbus-run-session, a graphical session, etc.); CI runs autotests
+    # separately in the dedicated GCC/Clang jobs.
+    -DBUILD_TESTING=OFF
     -DENABLE_MAKE_UNIQUE="${enable_make_unique}"
     -DCMAKE_BUILD_TYPE="${build_type}"
 )

@@ -66,16 +66,19 @@ set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
     /usr/share/latte
     /usr/share/plasma
 )
-# QML modules not captured by .so auto-detection:
+# QML modules are not captured by .so auto-detection:
 # - kirigami: loaded via QML import, no direct .so link from latte
 # - kcmutils: loaded by the configuration shell QML
 # - knewstuff: QML plugin files needed at runtime
-# Requires are expressed as shared library SONAMEs instead of distro package
-# names — the same RPM must install on Fedora, openSUSE and Mageia, whose
-# package names differ (kf6-kirigami vs kirigami6), while SONAMEs are
-# identical everywhere. (The qt6qml.attr fileattr only generates
-# qt6qmlimport provides for shipped qmldir files, not consumer requires.)
-set(CPACK_RPM_PACKAGE_REQUIRES "libKirigami.so.6, libKF6KCMUtils.so.6, libKF6NewStuffCore.so.6")
+#
+# RPM capabilities for these modules are not portable across distributions:
+# Mageia exposes the libraries through lib64* package names, while Fedora and
+# openSUSE expose them through kf6-* packages. A bare SONAME looks plausible
+# but is not a capability on Mageia/openSUSE, so the RPM becomes uninstallable.
+# The packaging workflow supplies the native package names for each RPM build.
+set(LATTE_RPM_PACKAGE_REQUIRES "" CACHE STRING
+    "Native RPM packages required by the QML modules")
+set(CPACK_RPM_PACKAGE_REQUIRES "${LATTE_RPM_PACKAGE_REQUIRES}")
 
 # DEB
 set(CPACK_DEBIAN_PACKAGE_NAME "latte-dock-ng")

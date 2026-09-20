@@ -25,6 +25,7 @@ qt_add_qml_module(lattecoreplugin
     CLASS_NAME LatteCorePlugin
     PLUGIN_TARGET lattecoreplugin
     NO_PLUGIN_OPTIONAL
+    DEPENDENCIES org.kde.plasma.core
     OUTPUT_DIRECTORY ${LATTE_CORE_QML_BUILD_DIR}
     SOURCES ${lattecoreplugin_SRCS}
 )

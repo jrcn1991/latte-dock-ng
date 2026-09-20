@@ -250,6 +250,7 @@ managed_dirs=(
 managed_files=(
     "${install_prefix}/bin/latte-dock-ng"
     "${install_prefix}/bin/latte-dock-ng-add-launcher"
+    "${install_prefix}/bin/latte-dock-ng-preview"
     "${install_prefix}/share/applications/org.kde.latte-dock.desktop"
     "${install_prefix}/share/plasma/kickeractions/org.kde.latte-dock.kickeractions.desktop"
     "${install_prefix}/share/metainfo/org.kde.latte-dock.appdata.xml"
@@ -284,6 +285,7 @@ if [[ "$install_mode" == "system" ]]; then
         for file_path in \
                 "${prefix}/bin/latte-dock-ng" \
                 "${prefix}/bin/latte-dock-ng-add-launcher" \
+                "${prefix}/bin/latte-dock-ng-preview" \
                 "${prefix}/share/applications/org.kde.latte-dock.desktop" \
                 "${prefix}/share/plasma/kickeractions/org.kde.latte-dock.kickeractions.desktop" \
                 "${prefix}/share/metainfo/org.kde.latte-dock.appdata.xml"; do
@@ -332,6 +334,7 @@ for user_home in "${user_homes[@]:-}"; do
 
         for file_path in \
                 "${user_home}/.local/bin/latte-dock-ng-add-launcher" \
+                "${user_home}/.local/bin/latte-dock-ng-preview" \
                 "${user_home}/.local/share/applications/org.kde.latte-dock.desktop" \
                 "${user_home}/.local/share/applications/latte-dock.desktop" \
                 "${user_home}/.local/share/plasma/kickeractions/org.kde.latte-dock.kickeractions.desktop"; do
@@ -352,6 +355,7 @@ for user_home in "${user_homes[@]:-}"; do
 
         for file_path in \
                 "${user_home}/.local/bin/latte-dock-ng-add-launcher" \
+                "${user_home}/.local/bin/latte-dock-ng-preview" \
                 "${user_home}/.local/share/applications/org.kde.latte-dock.desktop" \
                 "${user_home}/.local/share/applications/latte-dock.desktop" \
                 "${user_home}/.local/share/plasma/kickeractions/org.kde.latte-dock.kickeractions.desktop"; do

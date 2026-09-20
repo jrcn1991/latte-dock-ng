@@ -13,6 +13,13 @@ Installation
 > Do not build either variant on a newer distro than its target — versioned
 > dependencies (`dpkg-shlibdeps`) would raise the lower bound and break
 > installation.
+>
+> Debian 13 (trixie) is the current stable baseline. The CI matrix checks
+> Debian sid, Fedora, openSUSE, Mageia, Ubuntu, Arch, and NixOS on every
+> `main` push. Native package installation is tested separately from source
+> installation, so a package that only builds but cannot be installed is rejected.
+> Gentoo is best verified on a native Gentoo host, where Portage can reuse its
+> configured signed binhost instead of rebuilding the full Plasma stack.
 
 ## Kubuntu / KDE Neon (26.04+)
 
@@ -22,6 +29,7 @@ sudo apt install \
   qt6-base-dev qt6-base-dev-tools qt6-declarative-dev qt6-wayland-dev \
   libplasma-dev libplasmaactivities-dev libplasmaactivitiesstats-dev plasma-workspace-dev kwayland-dev \
   libkf6config-dev libkf6coreaddons-dev libkf6guiaddons-dev libkf6dbusaddons-dev \
+  libkf6kcmutils-dev \
   libkf6declarative-dev libkf6itemmodels-dev libkf6xmlgui-dev libkf6iconthemes-dev \
   libkf6kio-dev libkf6i18n-dev libkf6notifications-dev \
   libkf6newstuff-dev libkf6archive-dev libkf6globalaccel-dev \
@@ -50,6 +58,7 @@ sudo apt install \
   qt6-base-dev qt6-base-dev-tools qt6-declarative-dev qt6-wayland-dev \
   libplasma-dev libplasmaactivities-dev libplasmaactivitiesstats-dev plasma-workspace-dev kwayland-dev \
   libkf6config-dev libkf6coreaddons-dev libkf6guiaddons-dev libkf6dbusaddons-dev \
+  libkf6kcmutils-dev \
   libkf6declarative-dev libkf6itemmodels-dev libkf6xmlgui-dev libkf6iconthemes-dev \
   libkf6kio-dev libkf6i18n-dev libkf6notifications-dev \
   libkf6newstuff-dev libkf6archive-dev libkf6globalaccel-dev \
@@ -68,6 +77,7 @@ sudo pacman -S \
   qt6-base qt6-declarative qt6-wayland \
   libplasma plasma-activities plasma-activities-stats plasma-workspace kwayland \
   kconfig kcoreaddons kguiaddons kdbusaddons \
+  kcmutils \
   kdeclarative kitemmodels kxmlgui kiconthemes kio ki18n knotifications \
   knewstuff karchive kpackage kglobalaccel kcrash kwindowsystem ksvg \
   plasma-wayland-protocols wayland \
@@ -83,6 +93,7 @@ sudo dnf install \
   qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtwayland-devel \
   kf6-plasma-devel plasma-activities-devel plasma-activities-stats-devel plasma-workspace-devel kwayland-devel \
   kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kguiaddons-devel kf6-kdbusaddons-devel \
+  kf6-kcmutils-devel \
   kf6-kdeclarative-devel kf6-kitemmodels-devel kf6-kxmlgui-devel kf6-kiconthemes-devel \
   kf6-kio-devel kf6-ki18n-devel kf6-knotifications-devel \
   kf6-knewstuff-devel kf6-karchive-devel kf6-kglobalaccel-devel \
@@ -100,6 +111,7 @@ sudo zypper install \
   qt6-base-devel qt6-declarative-devel qt6-wayland-devel \
   libplasma6-devel plasma6-activities-devel plasma6-activities-stats-devel plasma6-workspace-devel kwayland6-devel \
   kf6-kconfig-devel kf6-kcoreaddons-devel kf6-kguiaddons-devel kf6-kdbusaddons-devel \
+  kf6-kcmutils-devel \
   kf6-kdeclarative-devel kf6-kitemmodels-devel kf6-kxmlgui-devel kf6-kiconthemes-devel \
   kf6-kio-devel kf6-ki18n-devel kf6-knotifications-devel \
   kf6-knewstuff-devel kf6-karchive-devel kf6-kglobalaccel-devel \
@@ -109,7 +121,7 @@ sudo zypper install \
   gcc-c++ gettext git pkgconf
 ```
 
-## Mageia (Cauldron)
+## Mageia (10+)
 
 ```bash
 sudo dnf install \
@@ -120,6 +132,7 @@ sudo dnf install \
   lib64plasma-devel lib64plasmaactivities-devel lib64plasmaactivitiesstats-devel \
   lib64plasma-workspace-devel lib64kwayland-devel \
   lib64kf6config-devel lib64kf6coreaddons-devel lib64kf6guiaddons-devel lib64kf6dbusaddons-devel \
+  lib64kcmutils-devel \
   lib64kf6declarative-devel lib64kf6itemmodels-devel lib64kf6xmlgui-devel lib64kf6iconthemes-devel \
   lib64kf6kio-devel lib64kf6i18n-devel lib64kf6notifications-devel \
   lib64kf6newstuff-devel lib64kf6archive-devel lib64kf6globalaccel-devel \
@@ -224,17 +237,29 @@ nix-build
 ## Docker Build Verification
 
 Docker images are provided to verify the build on each supported distribution.
-All images use USTC mirrors for fast package downloads in China.
+Local Docker runs use USTC mirrors by default for fast package downloads in
+China; GitHub Actions explicitly uses each distribution's official mirrors.
 
 ```bash
 cd docker
 docker compose run --rm arch       # Arch Linux
 docker compose run --rm fedora     # Fedora 44
 docker compose run --rm opensuse   # openSUSE Tumbleweed
-docker compose run --rm mageia     # Mageia Cauldron
+docker compose run --rm mageia     # Mageia 10
 docker compose run --rm ubuntu     # Ubuntu 26.04
-docker compose run --rm debian     # Debian Testing
+docker compose run --rm debian     # Debian 13 (current stable)
 docker compose run --rm nixos      # NixOS (nixos-unstable)
+```
+
+For Debian sid and Gentoo, run the corresponding verifier directly:
+
+```bash
+docker build -f Dockerfile.debian-sid -t latte-debian-sid .
+docker run --rm -v "$PWD/..:/src:ro" --tmpfs /build:exec -w /build \
+  latte-debian-sid bash /src/docker/verify-install.sh debian-sid
+docker build -f Dockerfile.gentoo -t latte-gentoo .
+docker run --rm -v "$PWD/..:/src:ro" --tmpfs /build:exec -w /build \
+  latte-gentoo bash /src/docker/verify-ebuild-gentoo.sh
 ```
 
 Each command builds a container with all dependencies installed, then runs
@@ -246,6 +271,9 @@ the full verification pipeline:
 5. Verify files are removed
 
 A successful run ends with `=== <DISTRO>: BUILD + INSTALL + UNINSTALL SUCCESS ===`.
+
+The GitHub Actions package job additionally builds and installs the native
+`pkg.tar.zst`, RPM, or DEB with the target distribution's package manager.
 
 `nixos` follows a different pipeline, since there's no apt/cmake step: it
 builds `default.nix` with `nix-build`, then installs and uninstalls it with

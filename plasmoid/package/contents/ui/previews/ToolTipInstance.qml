@@ -145,7 +145,7 @@ Column {
                     windowsPreviewDlg.visible = false;
                 }
 
-                backend.cancelHighlightWindows();
+                root.cancelHighlightWindows();
                 tasksModel.requestClose(submodelIndex);
             }
         }

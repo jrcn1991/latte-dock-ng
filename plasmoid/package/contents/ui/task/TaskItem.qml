@@ -136,6 +136,7 @@ AbilityItem.BasicItem {
                                                      && !taskItem.isSeparator
                                                      && fallbackTooltipText.length > 0
                                                      && !windowsPreviewDlg.visible
+                                                     && !root.isolatedPreview.visible
 
     QtControls.ToolTip {
         id: fallbackTooltip
@@ -615,6 +616,121 @@ AbilityItem.BasicItem {
         root.forcePreviewsHiding(debugtext);
     }
 
+    // Highlighting must use the same visual hover owner as isolated previews.
+    // The inner MouseArea can exit while the enlarged icon still owns hover.
+    readonly property bool highlightHoverActive: visualContainsMouse && root.highlightWindows
+        && !isLauncher && !isSeparator && !isStartup && !root.contextMenu
+        && !root.inEditMode && !root.disableAllWindowsFunctionality
+    property var highlightedHoverIds: []
+
+    onHighlightHoverActiveChanged: {
+        if (highlightHoverActive) {
+            highlightHoverDelay.restart();
+        } else {
+            highlightHoverDelay.stop();
+            if (highlightedHoverIds.length > 0) {
+                root.windowsHovered(highlightedHoverIds, false);
+                highlightedHoverIds = [];
+            }
+        }
+    }
+
+    Timer {
+        id: highlightHoverDelay
+        interval: Math.min(250, Math.max(150, plasmoid.configuration.previewsDelay))
+        onTriggered: {
+            if (taskItem.highlightHoverActive) {
+                taskItem.highlightedHoverIds = taskItem.isGroupParent
+                    ? subWindows.presentableWindowIds() : model.WinIdList;
+                root.windowsHovered(taskItem.highlightedHoverIds, true);
+            }
+        }
+    }
+
+    // Visual hover is authoritative during parabolic zoom; the ordinary
+    // MouseArea can lose ownership while the enlarged icon is still hovered.
+    onVisualContainsMouseChanged: {
+        if (visualContainsMouse && root.isolatedPreviewsEnabled && !isLauncher && !isSeparator) {
+            if (root.isolatedPreviewTask && root.isolatedPreviewTask !== taskItem) {
+                // A preview is already on screen for another task: move it to
+                // this one immediately instead of waiting out the show delay
+                // and tearing the surface down. This is what makes the preview
+                // follow icon switching like a tooltip.
+                root.isolatedPreviewTask = taskItem;
+                taskItem.updateIsolatedPreview();
+            } else {
+                isolatedPreviewDelay.restart();
+            }
+        } else {
+            isolatedPreviewDelay.stop();
+        }
+    }
+    Timer {
+        id: isolatedPreviewDelay
+        // The plan bounds preview creation to a short anti-flicker delay. The
+        // saved previewsDelay (650 ms by default) is tuned for the legacy
+        // in-process scene and is too slow for a tooltip-like isolated preview.
+        interval: Math.min(250, Math.max(150, plasmoid.configuration.previewsDelay))
+        onTriggered: {
+            if (taskItem.visualContainsMouse && root.isolatedPreviewsEnabled
+                    && !root.contextMenu && !root.inEditMode && !root.disableAllWindowsFunctionality) {
+                root.isolatedPreviewTask = taskItem;
+                taskItem.updateIsolatedPreview();
+            }
+        }
+    }
+    // The icon's live global rectangle. tooltipVisualParent is the same anchor
+    // the thin tooltip uses, so its mapToGlobal reflects the parabolic zoom
+    // transform (position and size) as the icon animates.
+    function isolatedPreviewAnchor() {
+        var anchor = tooltipVisualParent;
+        if (!anchor) {
+            return null;
+        }
+        var position = anchor.mapToGlobal(0, 0);
+        return Qt.rect(position.x, position.y, anchor.width, anchor.height);
+    }
+    function updateIsolatedPreview() {
+        var windows = isGroupParent ? subWindows.previewWindows() : [];
+        if (!isGroupParent && model.WinIdList && model.WinIdList.length > 0) {
+            windows.push({uuid: String(model.WinIdList[0]), appName: String(model.AppName || appName || ""),
+                title: String(model.display || appName),
+                launcherUrl: String(model.LauncherUrlWithoutIcon || model.LauncherUrl || launcherUrl || ""),
+                appPid: Number(model.AppPid || 0), minimized: isMinimized});
+        }
+        var anchor = isolatedPreviewAnchor();
+        if (!anchor) {
+            return;
+        }
+        root.isolatedPreview.show(windows, anchor, root.location);
+    }
+    function moveIsolatedPreview() {
+        var anchor = isolatedPreviewAnchor();
+        if (!anchor) {
+            return;
+        }
+        root.isolatedPreview.move(anchor, root.location);
+    }
+    function activatePreviewUuid(uuid) {
+        if (isGroupParent) {
+            subWindows.activatePreviewUuid(uuid);
+        } else if (model.WinIdList && String(model.WinIdList[0]) === uuid) {
+            // Activate without toggling the already active window to minimized.
+            if (isMinimized) {
+                tasksModel.requestToggleMinimized(modelIndex());
+            }
+            tasksModel.requestActivate(modelIndex());
+        }
+    }
+
+    function closePreviewUuid(uuid) {
+        if (isGroupParent) {
+            subWindows.closePreviewUuid(uuid);
+        } else if (model.WinIdList && String(model.WinIdList[0]) === uuid) {
+            tasksModel.requestClose(modelIndex());
+        }
+    }
+
     function showPreviewWindow() {
         // Window-preview thumbnails are broken on Plasma 6 / Wayland: the
         // legacy WindowThumbnail can't accept QString UUIDs, the PipeWire
@@ -1080,6 +1196,9 @@ AbilityItem.BasicItem {
     }
 
     Component.onDestruction: {
+        if (highlightedHoverIds.length > 0) {
+            root.windowsHovered(highlightedHoverIds, false);
+        }
         root.draggingFinished.disconnect(handlerDraggingFinished);
         root.publishTasksGeometries.disconnect(slotPublishGeometries);
         root.showPreviewForTasks.disconnect(slotShowPreviewForTasks);

@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build (${{ matrix.name }})
@@ -87,3 +91,141 @@ jobs:
       # disables all analyzer warnings; only errors fail the run).
       - name: Lint QML sources
         run: ./scripts/qmllint.sh
+
+  install-verify:
+    name: Install verify (${{ matrix.distro }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: arch
+            dockerfile: Dockerfile.arch
+            verifier: verify-install.sh
+          - distro: fedora
+            dockerfile: Dockerfile.fedora
+            verifier: verify-install.sh
+          - distro: opensuse
+            dockerfile: Dockerfile.opensuse
+            verifier: verify-install.sh
+          - distro: ubuntu
+            dockerfile: Dockerfile.ubuntu
+            verifier: verify-install.sh
+          - distro: mageia
+            dockerfile: Dockerfile.mageia
+            verifier: verify-install.sh
+          - distro: debian13
+            dockerfile: Dockerfile.debian
+            verifier: verify-install.sh
+            build_args: DEBIAN_BASE=trixie
+          - distro: debian-sid
+            dockerfile: Dockerfile.debian-sid
+            verifier: verify-install.sh
+          - distro: nixos
+            dockerfile: Dockerfile.nixos
+            verifier: verify-nix-nixos.sh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.distro }} verification image
+        run: |
+          build_args=()
+          if [ -n "${{ matrix.build_args }}" ]; then
+            build_args+=(--build-arg "${{ matrix.build_args }}")
+          fi
+          docker build --file docker/${{ matrix.dockerfile }} \
+            --build-arg USE_MIRRORS=false \
+            "${build_args[@]}" \
+            --tag latte-verify-${{ matrix.distro }} docker
+
+      - name: Verify build and installation
+        run: |
+          docker run --rm \
+            --volume "${{ github.workspace }}:/src:ro" \
+            --tmpfs /build:exec \
+            --workdir /build \
+            latte-verify-${{ matrix.distro }} \
+            bash /src/docker/${{ matrix.verifier }} "${{ matrix.distro }}"
+
+  package-install-verify:
+    name: Package install verify (${{ matrix.distro }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: arch
+            dockerfile: Dockerfile.arch
+            format: arch
+          - distro: fedora
+            dockerfile: Dockerfile.fedora
+            format: rpm
+            rpm_requires: kf6-kirigami, kf6-kcmutils, kf6-knewstuff
+          - distro: opensuse
+            dockerfile: Dockerfile.opensuse
+            format: rpm
+            rpm_requires: kf6-kirigami, kf6-kcmutils, kf6-knewstuff
+          - distro: mageia
+            dockerfile: Dockerfile.mageia
+            format: rpm
+            rpm_requires: lib64kirigami6, lib64kf6kcmutils6, lib64kf6newstuffcore6
+          - distro: debian13
+            dockerfile: Dockerfile.debian
+            build_args: DEBIAN_BASE=trixie
+            format: deb
+          - distro: debian-sid
+            dockerfile: Dockerfile.debian-sid
+            format: deb
+          - distro: ubuntu
+            dockerfile: Dockerfile.ubuntu
+            format: deb
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.distro }} packaging image
+        run: |
+          build_args=()
+          if [ -n "${{ matrix.build_args }}" ]; then
+            build_args+=(--build-arg "${{ matrix.build_args }}")
+          fi
+          docker build --file docker/${{ matrix.dockerfile }} \
+            --build-arg USE_MIRRORS=false \
+            "${build_args[@]}" \
+            --tag latte-package-${{ matrix.distro }} docker
+
+      - name: Build and install native package
+        run: |
+          docker run --rm \
+            --volume "${{ github.workspace }}:/src:ro" \
+            --tmpfs /build:exec \
+            --workdir /build \
+            latte-package-${{ matrix.distro }} \
+            bash -c '
+              set -euo pipefail
+              VERSION=$(sed -n "s/^ *set(VERSION \\([^)]*\\)).*/\\1/p" /src/CMakeLists.txt | head -1)
+              if [ "${{ matrix.format }}" = arch ]; then
+                bash /src/docker/package-arch.sh "$VERSION" /build
+                pacman -U --noconfirm /build/latte-dock-ng-*.pkg.tar.zst
+              elif [ "${{ matrix.format }}" = rpm ]; then
+                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION="$VERSION" \
+                  -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
+                cmake --build . --parallel "$(nproc)"
+                cpack -G RPM
+                if command -v dnf >/dev/null; then
+                  dnf install -y --setopt=install_weak_deps=False ./latte-dock-ng-*.rpm
+                else
+                  zypper --non-interactive --no-gpg-checks install --allow-unsigned-rpm ./latte-dock-ng-*.rpm
+                fi
+              else
+                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION="$VERSION"
+                cmake --build . --parallel "$(nproc)"
+                cpack -G DEB
+                apt-get update -qq
+                DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ./latte-dock-ng_*.deb
+              fi
+              test -x /usr/bin/latte-dock-ng
+              test -f /usr/share/applications/org.kde.latte-dock.desktop
+              echo NATIVE_PACKAGE_INSTALL_OK
+            '

@@ -176,7 +176,78 @@ PlasmoidItem {
         return "";
     }
     property bool shouldFilterByActivity: root.showOnlyCurrentActivity && root.tasksModelActivityId.length > 0
-    property bool showPreviews:  hoverAction === LatteTasks.types.PreviewWindows || hoverAction === LatteTasks.types.PreviewAndHighlightWindows
+    // Keep the preview scene unloaded while Wayland popup sizing and capture
+    // responsiveness are unverified. The saved hover choice alone must not
+    // reactivate the experimental path; title tooltips and highlighting remain
+    // independent. Re-enable only after a runtime responsiveness retest.
+    readonly property bool showPreviews: false
+    readonly property alias isolatedPreview: isolatedPreviewProcess
+    property Item isolatedPreviewTask: null
+    readonly property bool isolatedPreviewsEnabled: isolatedPreview.enabled
+        && (hoverAction === LatteTasks.types.PreviewWindows || hoverAction === LatteTasks.types.PreviewAndHighlightWindows)
+
+    LatteTasks.PreviewProcess {
+        id: isolatedPreviewProcess
+        onActivateRequested: (uuid) => {
+            if (root.isolatedPreviewTask) {
+                root.isolatedPreviewTask.activatePreviewUuid(uuid);
+            }
+            root.isolatedPreviewTask = null;
+        }
+        onCloseRequested: (uuid) => {
+            if (root.isolatedPreviewTask) {
+                root.isolatedPreviewTask.closePreviewUuid(uuid);
+            }
+        }
+    }
+
+    // Only metadata crosses the process boundary. The legacy preview Loader
+    // stays inactive even when the isolated experimental helper is enabled.
+    Timer {
+        id: isolatedPreviewPoll
+        interval: 100
+        repeat: true
+        running: root.isolatedPreviewTask !== null
+        property int outsideTicks: 0
+        onRunningChanged: outsideTicks = 0
+        onTriggered: {
+            var task = root.isolatedPreviewTask;
+            if (!root.isolatedPreviewsEnabled || root.contextMenu || root.inEditMode
+                    || !task || !task.visible || task.isLauncher || task.inRemoveStage) {
+                // Clearing the task triggers the hide in
+                // onIsolatedPreviewTaskChanged; do not hide twice.
+                root.isolatedPreviewTask = null;
+                return;
+            }
+            outsideTicks = (task.visualContainsMouse || isolatedPreview.hovered) ? 0 : outsideTicks + 1;
+            if (outsideTicks >= 4) {
+                root.isolatedPreviewTask = null;
+                isolatedPreview.hide();
+                return;
+            }
+            task.updateIsolatedPreview();
+        }
+    }
+    onIsolatedPreviewTaskChanged: {
+        // Only an empty selection tears the surface down. Switching to another
+        // task is handled by an in-place show() update so the preview follows
+        // the pointer without a hide/show flicker.
+        if (!isolatedPreviewTask) {
+            isolatedPreview.hide();
+        }
+    }
+    // Reposition the visible preview on every rendered frame so it stays glued
+    // to the icon during the parabolic zoom animation, like the thin tooltip.
+    // The 100 ms poll above only refreshes the window list; geometry travels as
+    // a lightweight move message here.
+    FrameAnimation {
+        running: root.isolatedPreviewTask !== null
+        onTriggered: {
+            if (root.isolatedPreviewTask) {
+                root.isolatedPreviewTask.moveIsolatedPreview();
+            }
+        }
+    }
     // The preview delegate pulls in thumbnail and MPRIS components.  Keep it
     // out of the task scene until previews are actually enabled.
     property var toolTipDelegate: toolTipDelegateLoader.item
@@ -302,6 +373,14 @@ PlasmoidItem {
     signal updateScale(int delegateIndex, real newScale, real step)
     signal publishTasksGeometries();
     signal windowsHovered(variant winIds, bool hovered)
+
+    function cancelHighlightWindows() {
+        windowEffectsBackend.cancelHighlightWindows();
+    }
+
+    onWindowsHovered: function(winIds, hovered) {
+        windowEffectsBackend.setHighlightedWindows(winIds, hovered);
+    }
 
 
     onScrollingEnabledChanged: {
@@ -790,6 +869,13 @@ PlasmoidItem {
         }
     }
 
+    // Latte owns highlighting instead of delegating it to Plasma's private
+    // task-manager backend. That backend differs across Plasma versions and
+    // its legacy implementation does not understand Wayland window UUIDs.
+    LatteTasks.WindowViewBackend {
+        id: windowEffectsBackend
+    }
+
     Item {
         id: dragHelper
         width: 1
@@ -868,7 +954,7 @@ PlasmoidItem {
         parabolic.local.isEnabled: localParabolicEnabled
         parabolic.local.factor.zoom: localParabolicEnabled ? localParabolicZoom : 1.0
         parabolic.local.factor.maxZoom: localParabolicEnabled ? Math.max(parabolic.local.factor.zoom, 1.6) : 1.0
-        parabolic.local.restoreZoomIsBlocked: root.contextMenu || windowsPreviewDlg.containsMouse
+        parabolic.local.restoreZoomIsBlocked: root.contextMenu || windowsPreviewDlg.containsMouse || isolatedPreview.hovered
 
         shortcuts.isStealingGlobalPositionShortcuts: root.plasmoid.configuration.isPreferredForPositionShortcuts
 
@@ -1496,7 +1582,6 @@ PlasmoidItem {
 
     Component.onCompleted:  {
         root.activateWindowView.connect(backend.activateWindowView);
-        root.windowsHovered.connect(backend.windowsHovered);
         updateListViewParent();
 
         if (root.contextMenuComponent.status === Component.Error) {
@@ -1506,7 +1591,7 @@ PlasmoidItem {
 
     Component.onDestruction: {
         root.activateWindowView.disconnect(backend.activateWindowView);
-        root.windowsHovered.disconnect(backend.windowsHovered);
+        root.cancelHighlightWindows();
     }
 
     //BEGIN states

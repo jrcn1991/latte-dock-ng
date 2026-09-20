@@ -19,6 +19,15 @@ jobs:
           - distro: fedora
             dockerfile: Dockerfile.fedora
             format: rpm
+            rpm_requires: kf6-kirigami, kf6-kcmutils, kf6-knewstuff
+          - distro: opensuse
+            dockerfile: Dockerfile.opensuse
+            format: rpm
+            rpm_requires: kf6-kirigami, kf6-kcmutils, kf6-knewstuff
+          - distro: mageia
+            dockerfile: Dockerfile.mageia
+            format: rpm
+            rpm_requires: lib64kirigami6, lib64kf6kcmutils6, lib64kf6newstuffcore6
           #! The libplasma soname changed from 6 to 7 between Plasma 6.5
           #! and 6.6, so a single deb cannot cover both camps: the trixie
           #! build (libplasma6) serves Debian 13 stable, the sid build
@@ -79,7 +88,7 @@ jobs:
                 #! the plain -1 release.
                 DEBREL='1'
                 if [ '${{ matrix.distro }}' = 'debian' ]; then DEBREL='1+deb13u1'; fi
-                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\"
+                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\" -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
                 cmake --build . --parallel \$(nproc)
                 #! source-install verification on this distro: the install
                 #! must land the binary and the desktop file
@@ -107,15 +116,23 @@ jobs:
             bash -c "
               set -e
               rpm_path=\$(ls /out/latte-dock-ng-*.rpm | head -1)
-              echo '== Cross-distro QML deps (SONAMEs, not package names) =='
-              rpm -qpR \"\$rpm_path\" | grep -E 'libKirigami\\.so\\.6|libKF6KCMUtils\\.so\\.6|libKF6NewStuffCore\\.so\\.6'
+              echo '== Native QML package dependencies =='
+              rpm -qpR \"\$rpm_path\" | grep -E 'kf6-(kirigami|kcmutils|knewstuff)|lib64(kirigami6|kf6kcmutils6|kf6newstuffcore6)'
               echo '== File list sanity =='
               rpm -qpl \"\$rpm_path\" | grep -E '/bin/latte-dock-ng\$|/share/applications/org.kde.latte-dock.desktop\$|/qt6/qml/org/kde/latte/core/qmldir\$|/share/icons/hicolor/'
               echo '== Install (unresolvable Requires fails here) =='
-              dnf install -y --setopt=install_weak_deps=False \"\$rpm_path\"
+              if command -v dnf >/dev/null; then
+                dnf install -y --setopt=install_weak_deps=False \"\$rpm_path\"
+              else
+                zypper --non-interactive --no-gpg-checks install --allow-unsigned-rpm \"\$rpm_path\"
+              fi
               echo '== rpmlint (errors are fatal, warnings informational) =='
-              LC_ALL=C rpmlint \"\$rpm_path\" | tee /tmp/rpmlint.log
-              ! grep -q 'E: ' /tmp/rpmlint.log
+              if command -v rpmlint >/dev/null; then
+                LC_ALL=C rpmlint \"\$rpm_path\" | tee /tmp/rpmlint.log
+                ! grep -q 'E: ' /tmp/rpmlint.log
+              else
+                echo 'rpmlint not available on this distro; skipping'
+              fi
               echo '== Launch (headless) =='
               set +e
               start=\$(date +%s)

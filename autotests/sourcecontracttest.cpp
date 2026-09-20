@@ -174,6 +174,8 @@ private Q_SLOTS:
     // Qt5→Qt6 migration guards — patterns that cause regressions
     void mouseButtonEnumUsesMiddleButtonNotMidButton();
     void taskMouseAreaSkipsInactivePreviewChecks();
+    void isolatedWindowPreviewProcessIsFailClosed();
+    void latteCoreQmlModuleDeclaresPlasmaCoreDependency();
     void taskFallbackTooltipRespectsLatteTooltipSetting();
     void taskTooltipUsesHoveredVisualState();
     void thinTooltipHandlesMissingTextAndRepositionsAfterShowing();
@@ -202,6 +204,7 @@ private Q_SLOTS:
     void uniqueNameExhaustionFallsBackToRandomSuffix();
     void layoutManagerResolveAppletQuickItemThreadsVisitedSet();
     void appdataComponentIdKeepsHyphenInLastSegment();
+    void applicationMetadataUsesCurrentIconName();
     void positionShortcutHandlersDeclareSignalParameters();
     void positionShortcutHostLookupIsRecursiveAndResettable();
     void qmlCacheRevisionInvalidatesSameVersionBuilds();
@@ -1629,7 +1632,8 @@ void SourceContractTest::cmakePackagingConfigLivesInModule()
     QVERIFY(module.open(QFile::ReadOnly));
     const QString moduleSource = QString::fromUtf8(module.readAll());
     QVERIFY(moduleSource.contains(QStringLiteral("set(CPACK_PACKAGE_NAME \"latte-dock-ng\")")));
-    QVERIFY(moduleSource.contains(QStringLiteral("set(CPACK_RPM_PACKAGE_REQUIRES \"libKirigami.so.6, libKF6KCMUtils.so.6, libKF6NewStuffCore.so.6\")")));
+    QVERIFY(moduleSource.contains(QStringLiteral("set(LATTE_RPM_PACKAGE_REQUIRES \"\" CACHE STRING")));
+    QVERIFY(moduleSource.contains(QStringLiteral("set(CPACK_RPM_PACKAGE_REQUIRES \"${LATTE_RPM_PACKAGE_REQUIRES}\")")));
     QVERIFY(moduleSource.contains(QStringLiteral("set(CPACK_DEBIAN_PACKAGE_DEPENDS \"qml6-module-org-kde-kirigami, qml6-module-org-kde-kcmutils, qml6-module-org-kde-newstuff\")")));
     QVERIFY(moduleSource.contains(QStringLiteral("include(CPack)")));
 
@@ -3700,6 +3704,145 @@ void SourceContractTest::taskMouseAreaSkipsInactivePreviewChecks()
     const QString guard = QStringLiteral("if((root.showPreviews || root.highlightWindows)\n"
                                          "                && isAbleToShowPreview");
     QVERIFY(taskMouseSource.contains(guard));
+
+    // A persisted preview hover action must not load the experimental scene
+    // while preview responsiveness is unverified, even before any task hover.
+    QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(mainQml.open(QFile::ReadOnly));
+    const QString mainSource = QString::fromUtf8(mainQml.readAll());
+    QVERIFY(mainSource.contains(QStringLiteral("readonly property bool showPreviews: false")));
+    QVERIFY(mainSource.contains(QStringLiteral("id: toolTipDelegateLoader\n        active: root.showPreviews")));
+}
+
+void SourceContractTest::isolatedWindowPreviewProcessIsFailClosed()
+{
+    // The dock-side manager must stay asynchronous and fail closed. Any
+    // blocking wait on the helper, capture or screencasting would freeze the
+    // dock's event loop, which is the exact failure the isolation removes.
+    QFile manager(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/plugin/previewprocess.cpp"));
+    QVERIFY(manager.open(QFile::ReadOnly));
+    const QString managerSource = QString::fromUtf8(manager.readAll());
+    // The user-visible hover action is the only feature gate. Requiring a
+    // hidden environment variable would leave the enabled setting inert.
+    QVERIFY(!managerSource.contains(QStringLiteral("LATTE_ISOLATED_PREVIEWS")));
+    QVERIFY(managerSource.contains(QStringLiteral("QStringLiteral(\"/latte-dock-ng-preview\"),\n                     true,")));
+    QVERIFY(managerSource.contains(QStringLiteral("MaxProtocolBytes")));
+    QVERIFY(managerSource.contains(QStringLiteral("MaxPreviews = 9")));
+    QVERIFY(managerSource.contains(QStringLiteral("MaxConsecutiveFailures")));
+    QVERIFY(managerSource.contains(QStringLiteral("QUuid")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeHeartbeat")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeActivate")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeClose")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeMove")));
+    QVERIFY(managerSource.contains(QStringLiteral("TypeClosed")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForStarted")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForFinished")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForReadyRead")));
+    QVERIFY(!managerSource.contains(QStringLiteral("waitForBytesWritten")));
+
+    // The helper owns the popup. A cross-process xdg_popup is impossible (no
+    // transientParent in a separate client), so the surface must be a
+    // layer-shell overlay positioned with anchors + margins. This project is
+    // Wayland-only, so a raw X11 window-position fallback must not return.
+    QFile helper(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/main.cpp"));
+    QVERIFY(helper.open(QFile::ReadOnly));
+    const QString helperSource = QString::fromUtf8(helper.readAll());
+    QVERIFY(helperSource.contains(QStringLiteral("LayerShellQt::Window::get")));
+    QVERIFY(helperSource.contains(QStringLiteral("setMargins")));
+    QVERIFY(helperSource.contains(QStringLiteral("setDesiredSize")));
+    QVERIFY(!helperSource.contains(QStringLiteral("platformName")));
+    QVERIFY(!helperSource.contains(QStringLiteral("setPosition(pos)")));
+    QVERIFY(helperSource.contains(QStringLiteral("IdleLeaseMs")));
+    QVERIFY(helperSource.contains(QStringLiteral("isBoundedNumber")));
+    QVERIFY(helperSource.contains(QStringLiteral("QStringLiteral(\"move\")")));
+    QVERIFY(helperSource.contains(QStringLiteral("setDesktopFileName")));
+    QVERIFY(helperSource.contains(QStringLiteral("org.kde.latte-dock.preview")));
+    QVERIFY(helperSource.contains(QStringLiteral("KLocalizedQmlContext")));
+    QVERIFY(helperSource.contains(QStringLiteral("Plasma::Theme plasmaTheme")));
+    QVERIFY(!helperSource.contains(QStringLiteral("app.setPalette(plasmaTheme.palette())")));
+    QVERIFY(helperSource.contains(QStringLiteral("Plasma::Theme::TextColor")));
+
+    QFile windowBackend(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/plugin/windowviewbackend.cpp"));
+    QVERIFY(windowBackend.open(QFile::ReadOnly));
+    const QString windowBackendSource = QString::fromUtf8(windowBackend.readAll());
+    QVERIFY(windowBackendSource.contains(QStringLiteral("org.kde.KWin.HighlightWindow")));
+    QVERIFY(windowBackendSource.contains(QStringLiteral("/org/kde/KWin/HighlightWindow")));
+    QVERIFY(windowBackendSource.contains(QStringLiteral("setHighlightedWindows")));
+    QVERIFY(windowBackendSource.contains(QStringLiteral("cancelHighlightWindows")));
+
+    QFile tasksRoot(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(tasksRoot.open(QFile::ReadOnly));
+    const QString tasksRootSource = QString::fromUtf8(tasksRoot.readAll());
+    QVERIFY(tasksRootSource.contains(QStringLiteral("windowEffectsBackend.setHighlightedWindows")));
+    QVERIFY(tasksRootSource.contains(QStringLiteral("windowEffectsBackend.cancelHighlightWindows")));
+    QVERIFY(!tasksRootSource.contains(QStringLiteral("windowsHovered.connect(backend.windowsHovered)")));
+
+    // Capture stays asynchronous and is resolved per window so one failed
+    // PipeWire handshake cannot take down the whole preview dialog.
+    QFile capture(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/Capture.qml"));
+    QVERIFY(capture.open(QFile::ReadOnly));
+    const QString captureSource = QString::fromUtf8(capture.readAll());
+    QVERIFY(captureSource.contains(QStringLiteral("PipeWireSourceItem")));
+    QVERIFY(captureSource.contains(QStringLiteral("ScreencastingRequest")));
+    QVERIFY(captureSource.contains(QStringLiteral("uuid: source.uuid")));
+
+    QFile preview(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/preview/Preview.qml"));
+    QVERIFY(preview.open(QFile::ReadOnly));
+    const QString previewSource = QString::fromUtf8(preview.readAll());
+    QVERIFY(previewSource.contains(QStringLiteral("asynchronous: true")));
+    QVERIFY(previewSource.contains(QStringLiteral("TapHandler")));
+    QVERIFY(previewSource.contains(QStringLiteral("widgets/background")));
+    QVERIFY(previewSource.contains(QStringLiteral("Kirigami.Units.gridUnit * 16")));
+    QVERIFY(previewSource.contains(QStringLiteral("Kirigami.Units.gridUnit * 8")));
+    QVERIFY(previewSource.contains(QStringLiteral("window-close")));
+    QVERIFY(previewSource.contains(QStringLiteral("Mpris.Mpris2Model")));
+    QVERIFY(previewSource.contains(QStringLiteral("media-playback-pause")));
+    QVERIFY(previewSource.contains(QStringLiteral("icon.color: root.popupTextColor")));
+
+    // The helper is built and installed alongside the dock, and the feature is
+    // opt-in: the legacy in-process preview scene stays unloaded regardless of
+    // the persisted hover action.
+    QFile cmake(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/CMakeLists.txt"));
+    QVERIFY(cmake.open(QFile::ReadOnly));
+    const QString cmakeSource = QString::fromUtf8(cmake.readAll());
+    QVERIFY(cmakeSource.contains(QStringLiteral("add_executable(latte-dock-ng-preview")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("previewprocess.cpp")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("org.kde.latte-dock.preview.desktop")));
+    QVERIFY(cmakeSource.contains(QStringLiteral("KF6::I18nQml")));
+
+    QFile helperDesktop(QStringLiteral(
+        LATTE_SOURCE_DIR "/plasmoid/org.kde.latte-dock.preview.desktop.cmake"));
+    QVERIFY(helperDesktop.open(QFile::ReadOnly));
+    const QString helperDesktopSource = QString::fromUtf8(helperDesktop.readAll());
+    QVERIFY(helperDesktopSource.contains(QStringLiteral("Exec=@CMAKE_INSTALL_PREFIX@/bin/latte-dock-ng-preview")));
+    QVERIFY(helperDesktopSource.contains(QStringLiteral(
+        "X-KDE-Wayland-Interfaces=zkde_screencast_unstable_v1")));
+
+    QFile mainQml(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(mainQml.open(QFile::ReadOnly));
+    const QString mainSource = QString::fromUtf8(mainQml.readAll());
+    QVERIFY(mainSource.contains(QStringLiteral("readonly property bool showPreviews: false")));
+    QVERIFY(mainSource.contains(QStringLiteral("isolatedPreviewsEnabled")));
+    // Frame-rate tracking keeps the preview glued to the icon during the
+    // parabolic zoom animation, like the thin tooltip.
+    QVERIFY(mainSource.contains(QStringLiteral("FrameAnimation")));
+
+    QFile taskItem(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/task/TaskItem.qml"));
+    QVERIFY(taskItem.open(QFile::ReadOnly));
+    const QString taskItemSource = QString::fromUtf8(taskItem.readAll());
+    QVERIFY(taskItemSource.contains(QStringLiteral("function moveIsolatedPreview")));
+    QVERIFY(taskItemSource.contains(QStringLiteral("mapToGlobal")));
+}
+
+void SourceContractTest::latteCoreQmlModuleDeclaresPlasmaCoreDependency()
+{
+    QFile cmake(QStringLiteral(LATTE_SOURCE_DIR "/declarativeimports/core/CMakeLists.txt"));
+    QVERIFY(cmake.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(cmake.readAll());
+    // PlasmaQuick::Dialog publishes its QML metadata through plasma.core.
+    // Keep this dependency next to qt_add_qml_module so qmltyperegistrar can
+    // resolve Latte::Quick::Dialog's prototype without a build warning.
+    QVERIFY(source.contains(QStringLiteral("DEPENDENCIES org.kde.plasma.core")));
 }
 
 void SourceContractTest::taskFallbackTooltipRespectsLatteTooltipSetting()
@@ -4128,6 +4271,21 @@ void SourceContractTest::appdataComponentIdKeepsHyphenInLastSegment()
     QVERIFY(!src.contains(QStringLiteral("<id>org.kde.latte-dock.desktop</id>")));
     QVERIFY(src.contains(QStringLiteral("<developer id=")));
     QVERIFY(!src.contains(QStringLiteral("<developer_name>")));
+}
+
+void SourceContractTest::applicationMetadataUsesCurrentIconName()
+{
+    QFile appdata(QStringLiteral(LATTE_SOURCE_DIR "/app/org.kde.latte-dock.appdata.xml.cmake"));
+    QVERIFY(appdata.open(QFile::ReadOnly));
+    const QString appdataSource = QString::fromUtf8(appdata.readAll());
+    QVERIFY(appdataSource.contains(QStringLiteral("<icon type=\"stock\">latte-dock-ng</icon>")));
+    QVERIFY(!appdataSource.contains(QStringLiteral("<icon type=\"stock\">latte-dock</icon>")));
+
+    QFile plasmoid(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/metadata.json"));
+    QVERIFY(plasmoid.open(QFile::ReadOnly));
+    const QString plasmoidSource = QString::fromUtf8(plasmoid.readAll());
+    QVERIFY(plasmoidSource.contains(QStringLiteral("\"Icon\": \"latte-dock-ng\"")));
+    QVERIFY(!plasmoidSource.contains(QStringLiteral("\"Icon\": \"latte-dock\"")));
 }
 
 void SourceContractTest::positionShortcutHandlersDeclareSignalParameters()

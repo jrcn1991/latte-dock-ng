@@ -22,6 +22,7 @@
 #include <QQuickWindow>
 #include <QPixmap>
 #include <QSGSimpleTextureNode>
+#include <QSignalBlocker>
 #include <QuickAddons/ManagedTextureNode>
 #include <QLatin1String>
 
@@ -523,8 +524,17 @@ void IconItem::loadPixmap()
         update();
         return;
     } else if (m_svgIcon) {
-        m_svgIcon->setDevicePixelRatio(itemDevicePixelRatio(this));
-        m_svgIcon->resize(size, size);
+        // Resizing this private SVG emits synchronous repaint signals, and the
+        // item's geometry already reflects the size being applied. Letting them
+        // reach schedulePixmapUpdate() re-enters loadPixmap() from updatePolish()
+        // and can starve the dock's event loop at fractional preview sizes.
+        // Block only the geometry application; setImagePath() below must keep
+        // its normal notifications so external theme changes still repaint.
+        {
+            const QSignalBlocker blocker(m_svgIcon.get());
+            m_svgIcon->setDevicePixelRatio(itemDevicePixelRatio(this));
+            m_svgIcon->resize(size, size);
+        }
 
         if (m_svgIcon->hasElement(m_svgIconName)) {
             result = m_svgIcon->pixmap(m_svgIconName);

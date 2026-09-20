@@ -11,6 +11,8 @@
 
 static const QString service = QStringLiteral("org.kde.KWin.Effect.WindowView1");
 static const QString path = QStringLiteral("/org/kde/KWin/Effect/WindowView1");
+static const QString highlightService = QStringLiteral("org.kde.KWin");
+static const QString highlightPath = QStringLiteral("/org/kde/KWin/HighlightWindow");
 static const QString firstId = QStringLiteral("{12345678-1234-1234-1234-123456789abc}");
 static const QString secondId = QStringLiteral("{87654321-4321-4321-4321-cba987654321}");
 
@@ -22,6 +24,16 @@ public:
     QList<QStringList> calls;
 public Q_SLOTS:
     void activate(const QStringList &ids) { calls.append(ids); }
+};
+
+class FakeHighlightWindow : public QObject
+{
+    Q_OBJECT
+    Q_CLASSINFO("D-Bus Interface", "org.kde.KWin.HighlightWindow")
+public:
+    QList<QStringList> calls;
+public Q_SLOTS:
+    void highlightWindows(const QStringList &ids) { calls.append(ids); }
 };
 
 class WindowViewBackendTest : public QObject
@@ -39,14 +51,20 @@ private Q_SLOTS:
     void init()
     {
         m_effect.calls.clear();
+        m_highlightEffect.calls.clear();
         QVERIFY(QDBusConnection::sessionBus().registerService(service));
         QVERIFY(QDBusConnection::sessionBus().registerObject(path, &m_effect, QDBusConnection::ExportAllSlots));
+        QVERIFY(QDBusConnection::sessionBus().registerService(highlightService));
+        QVERIFY(QDBusConnection::sessionBus().registerObject(highlightPath, &m_highlightEffect,
+                                                              QDBusConnection::ExportAllSlots));
     }
 
     void cleanup()
     {
         QDBusConnection::sessionBus().unregisterObject(path);
         QDBusConnection::sessionBus().unregisterService(service);
+        QDBusConnection::sessionBus().unregisterObject(highlightPath);
+        QDBusConnection::sessionBus().unregisterService(highlightService);
     }
 
     void rejectsEmptySelection()
@@ -111,8 +129,49 @@ private Q_SLOTS:
         QCOMPARE(m_effect.calls.size(), 2);
     }
 
+    void forwardsAndCancelsWaylandHighlight()
+    {
+        Latte::Tasks::WindowViewBackend backend;
+        backend.setHighlightedWindows({firstId, QStringLiteral("invalid"), QUuid(secondId)}, true);
+        QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{firstId, secondId}}));
+
+        backend.setHighlightedWindows({firstId, QUuid(secondId)}, false);
+        QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{firstId, secondId}, {}}));
+    }
+
+    void staleExitDoesNotClearNewHighlight()
+    {
+        Latte::Tasks::WindowViewBackend backend;
+        backend.setHighlightedWindows({firstId}, true);
+        backend.setHighlightedWindows({secondId}, true);
+        backend.setHighlightedWindows({firstId}, false);
+        QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{firstId}, {secondId}}));
+
+        backend.cancelHighlightWindows();
+        QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{firstId}, {secondId}, {}}));
+    }
+
+    void missingHighlightServiceIsBestEffort()
+    {
+        Latte::Tasks::WindowViewBackend backend;
+        QDBusConnection::sessionBus().unregisterObject(highlightPath);
+        QVERIFY(QDBusConnection::sessionBus().unregisterService(highlightService));
+
+        // Highlighting is optional: a KWin restart or disabled effect must not
+        // turn a hover event into a synchronous DBus failure.
+        backend.setHighlightedWindows({firstId}, true);
+        backend.cancelHighlightWindows();
+
+        QVERIFY(QDBusConnection::sessionBus().registerService(highlightService));
+        QVERIFY(QDBusConnection::sessionBus().registerObject(highlightPath, &m_highlightEffect,
+                                                              QDBusConnection::ExportAllSlots));
+        backend.setHighlightedWindows({secondId}, true);
+        QTRY_COMPARE(m_highlightEffect.calls, QList<QStringList>({{secondId}}));
+    }
+
 private:
     FakeWindowView m_effect;
+    FakeHighlightWindow m_highlightEffect;
 };
 
 QTEST_GUILESS_MAIN(WindowViewBackendTest)

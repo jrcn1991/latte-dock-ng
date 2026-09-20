@@ -1205,7 +1205,6 @@ void Corona::aboutApplication()
     aboutDialog = new KAboutApplicationDialog(KAboutData::applicationData());
     connect(aboutDialog.data(), &QDialog::finished, aboutDialog.data(), &QObject::deleteLater);
     m_wm->skipTaskBar(*aboutDialog);
-    // setKeepAbove via winId() is X11-only; Wayland handles window stacking via PlasmaShellSurface
 
     aboutDialog->show();
 }
