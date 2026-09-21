@@ -30,13 +30,13 @@ jobs:
             rpm_requires: lib64kirigami6, lib64kf6kcmutils6, lib64kf6newstuffcore6
           #! The libplasma soname changed from 6 to 7 between Plasma 6.5
           #! and 6.6, so a single deb cannot cover both camps: the trixie
-          #! build (libplasma6) serves Debian 13 stable, the sid build
-          #! (libplasma7) serves testing/sid and Ubuntu 26.04+.
+          #! build (libplasma6) serves Debian 13 stable, the testing build
+          #! (libplasma7) serves Debian testing and Ubuntu 26.04+.
           - distro: debian
             dockerfile: Dockerfile.debian
             format: deb
-          - distro: debian-sid
-            dockerfile: Dockerfile.debian-sid
+          - distro: debian-testing
+            dockerfile: Dockerfile.debian-testing
             format: deb
           - distro: arch
             dockerfile: Dockerfile.arch
@@ -84,7 +84,7 @@ jobs:
                 #! The trixie build carries the Debian 13 revision marker
                 #! (+deb13u1, the Debian convention for stable-specific
                 #! rebuilds) in the package version, which flows into both
-                #! the control file and the file name; testing/sid keeps
+                #! the control file and the file name; testing keeps
                 #! the plain -1 release.
                 DEBREL='1'
                 if [ '${{ matrix.distro }}' = 'debian' ]; then DEBREL='1+deb13u1'; fi

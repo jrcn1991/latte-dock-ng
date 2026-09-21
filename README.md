@@ -94,8 +94,8 @@ Prebuilt packages are attached to every
 - **`.deb`** — two variants are provided, because libplasma's soname
   changed from 6 to 7 between Plasma 6.5 and 6.6 (Debian package
   `libplasma6` → `libplasma7`) and the two camps are binary-incompatible:
-  - `latte-dock-ng_<ver>-1_amd64.deb` (plain name) — built on Debian sid,
-    links `libplasma7`; for **Debian testing / sid and Ubuntu 26.04+**
+  - `latte-dock-ng_<ver>-1_amd64.deb` (plain name) — built on Debian testing,
+    links `libplasma7`; for **Debian testing and Ubuntu 26.04+**
   - `latte-dock-ng_<ver>-1+deb13u1_amd64.deb` — built on Debian 13
     (trixie), links `libplasma6`; the `+deb13u1` revision marks the
     Debian 13 (stable) build
