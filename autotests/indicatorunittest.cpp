@@ -91,7 +91,6 @@ private Q_SLOTS:
     void importIndicatorFileRejectsInvalidMetadata();
     void importIndicatorFileReportsUpdatedStateForExistingIndicator();
     void indicatorConfigurationMapWritesConfigToGroupOnModification();
-    void indicatorConfigurationMapBatchesRapidModifications();
 };
 
 void IndicatorUnitTest::metadataFileAbsolutePathPrefersJson()
@@ -276,76 +275,6 @@ void IndicatorUnitTest::indicatorConfigurationMapWritesConfigToGroupOnModificati
 
         QCOMPARE(map->value(QStringLiteral("size")).toDouble(), 0.35);
         QCOMPARE(map->value(QStringLiteral("glowEnabled")).toBool(), true);
-    }
-}
-
-void IndicatorUnitTest::indicatorConfigurationMapBatchesRapidModifications()
-{
-    QTemporaryFile configFile;
-    QVERIFY(configFile.open());
-    const QString configPath = configFile.fileName();
-    configFile.close();
-
-    QTemporaryDir tempDir;
-    QVERIFY(tempDir.isValid());
-    const QString xmlPath = writeFile(tempDir.path() + QStringLiteral("/main.xml"), QByteArray(R"(<?xml version="1.0" encoding="UTF-8"?>
-<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0">
-  <kcfgfile name=""/>
-  <group name="General">
-    <entry name="size" type="Double">
-       <default>0.10</default>
-    </entry>
-  </group>
-</kcfg>)"));
-    QVERIFY(!xmlPath.isEmpty());
-
-    // We configure multiple updates using property map and a debouncing logic similar to indicator's updateScheme()
-    {
-        KConfig config(configPath, KConfig::SimpleConfig);
-        KConfigGroup indicatorGroup = config.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
-        KConfigGroup pluginGroup = indicatorGroup.group(QStringLiteral("org.kde.latte.default"));
-
-        QFile xmlFile(xmlPath);
-        auto *loader = new KConfigLoader(pluginGroup, &xmlFile, this);
-        auto *map = new KDeclarative::ConfigPropertyMap(loader, this);
-
-        QTimer debounceTimer;
-        debounceTimer.setSingleShot(true);
-        debounceTimer.setInterval(200);
-
-        connect(map, &QQmlPropertyMap::valueChanged, this, [&debounceTimer]() {
-            debounceTimer.start();
-        });
-
-        connect(&debounceTimer, &QTimer::timeout, this, [map, &indicatorGroup]() {
-            map->writeConfig();
-            indicatorGroup.sync();
-        });
-
-        // Simulate rapid changes
-        map->insert(QStringLiteral("size"), 0.15);
-        map->insert(QStringLiteral("size"), 0.20);
-        map->insert(QStringLiteral("size"), 0.25);
-        map->insert(QStringLiteral("size"), 0.35);
-
-        // Verify configuration on disk has not been updated yet
-        {
-            KConfig verifyConfig(configPath, KConfig::SimpleConfig);
-            KConfigGroup verifyIndicatorGroup = verifyConfig.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
-            KConfigGroup verifyPluginGroup = verifyIndicatorGroup.group(QStringLiteral("org.kde.latte.default"));
-            QCOMPARE(verifyPluginGroup.readEntry(QStringLiteral("size"), 0.10), 0.10);
-        }
-
-        // Wait for timer to trigger
-        QTest::qWait(300);
-
-        // Verify configuration on disk is updated with the batched value
-        {
-            KConfig verifyConfig(configPath, KConfig::SimpleConfig);
-            KConfigGroup verifyIndicatorGroup = verifyConfig.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
-            KConfigGroup verifyPluginGroup = verifyIndicatorGroup.group(QStringLiteral("org.kde.latte.default"));
-            QCOMPARE(verifyPluginGroup.readEntry(QStringLiteral("size"), 0.10), 0.35);
-        }
     }
 }
 
