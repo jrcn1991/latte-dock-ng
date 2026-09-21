@@ -3,12 +3,20 @@ FROM debian:sid
 ENV DEBIAN_FRONTEND=noninteractive
 
 ARG USE_MIRRORS=true
+ARG DEBIAN_SNAPSHOT=20260820T000000Z
 
 RUN if [ "$USE_MIRRORS" = "true" ]; then \
       sed -i 's|//deb.debian.org|//mirrors.ustc.edu.cn|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || \
       sed -i 's|//deb.debian.org|//mirrors.ustc.edu.cn|g' /etc/apt/sources.list ; \
       sed -i 's|//security.debian.org|//mirrors.ustc.edu.cn|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || \
       sed -i 's|//security.debian.org|//mirrors.ustc.edu.cn|g' /etc/apt/sources.list ; \
+    else \
+      # Debian sid is temporarily split between Qt 6.10 and 6.11.  CI must use
+      # one coherent official archive snapshot until the dependency transition
+      # completes; local mirror builds intentionally continue tracking sid.
+      sed -i "s|//deb.debian.org/debian|//snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}|g" /etc/apt/sources.list.d/*.sources 2>/dev/null || \
+      sed -i "s|//deb.debian.org/debian|//snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}|g" /etc/apt/sources.list ; \
+      printf '%s\\n' 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99snapshot-validity; \
     fi
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
