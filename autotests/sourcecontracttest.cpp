@@ -44,6 +44,7 @@ private Q_SLOTS:
     void itemsAlignmentConfigDefaultsToCenter();
     void appearancePaletteExposesLayoutCustomColors();
     void modernDockBackgroundShadowDefaultIsCompact();
+    void classicCustomRadiusPreservesThemeDefaultShadow();
     void layoutDetailsExposeCustomColorSchemeSelector();
     void showWindowAnimationContractMovedToQmlSmokeTest();
     void parabolicItemContractMovedToQmlSmokeTest();
@@ -207,6 +208,7 @@ private Q_SLOTS:
     void applicationMetadataUsesCurrentIconName();
     void positionShortcutHandlersDeclareSignalParameters();
     void positionShortcutHostLookupIsRecursiveAndResettable();
+    void panelShadowRoundnessRejectsIncompleteThemeAssets();
     void qmlCacheRevisionInvalidatesSameVersionBuilds();
 
     // Applet menu / popup contracts
@@ -1448,6 +1450,18 @@ void SourceContractTest::modernDockBackgroundShadowDefaultIsCompact()
     QVERIFY(backgroundSource.contains(QStringLiteral("return customShadow; //! Modern default")));
     QVERIFY(!backgroundSource.contains(QStringLiteral("return Math.max(10, customShadow); //! Modern default")));
     QVERIFY(!backgroundSource.contains(QStringLiteral("return Math.max(AbilityDefinition.MetricsConstants.kModernBackgroundShadowMinPixels, customShadow);")));
+}
+
+void SourceContractTest::classicCustomRadiusPreservesThemeDefaultShadow()
+{
+    QFile backgroundFile(QStringLiteral(LATTE_SOURCE_DIR "/containment/package/contents/ui/background/MultiLayered.qml"));
+    QVERIFY(backgroundFile.open(QFile::ReadOnly));
+    const QString backgroundSource = QString::fromUtf8(backgroundFile.readAll());
+
+    QVERIFY(backgroundSource.contains(QStringLiteral(
+        "readonly property bool customDefShadowIsEnabled: modernDockStyle && customShadowIsSupported && !customUserShadowIsEnabled && customRadiusIsEnabled")));
+    QVERIFY(backgroundSource.contains(QStringLiteral("|| barLine.customShadowIsEnabled")));
+    QVERIFY(!backgroundSource.contains(QStringLiteral("|| barLine.customShadowedRectangleIsEnabled\n\n        Behavior on opacity")));
 }
 
 void SourceContractTest::layoutDetailsExposeCustomColorSchemeSelector()
@@ -4320,6 +4334,25 @@ void SourceContractTest::positionShortcutHostLookupIsRecursiveAndResettable()
     QVERIFY(bridgeSource.contains(QStringLiteral("function onSglActivateEntryAtIndex(entryIndex)")));
     QVERIFY(bridgeSource.contains(QStringLiteral("client.sglActivateEntryAtIndex(entryIndex)")));
     QVERIFY(!bridgeSource.contains(QStringLiteral("host.sglActivateEntryAtIndex.connect")));
+}
+
+void SourceContractTest::panelShadowRoundnessRejectsIncompleteThemeAssets()
+{
+    QFile panelBackground(QStringLiteral(LATTE_SOURCE_DIR "/app/plasma/extended/panelbackground.cpp"));
+    QVERIFY(panelBackground.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(panelBackground.readAll());
+    const int shadowsBegin = source.indexOf(QStringLiteral("PanelBackground::updateRoundnessFromShadows"));
+    const int shadowsEnd = source.indexOf(QStringLiteral("PanelBackground::updateRoundnessFallback"), shadowsBegin);
+    QVERIFY(shadowsBegin >= 0);
+    QVERIFY(shadowsEnd > shadowsBegin);
+    const QString shadowsSource = source.mid(shadowsBegin, shadowsEnd - shadowsBegin);
+
+    // A missing corner asset produces an empty QImage. The guard must remain
+    // ahead of every scanLine() call, and the bottom/right traversal may not
+    // read the one-past-end image row.
+    QVERIFY(shadowsSource.contains(QStringLiteral("corner.isNull() || corner.width() == 0 || corner.height() == 0")));
+    QVERIFY(shadowsSource.contains(QStringLiteral("for (int r = baseRow + 1; r < corner.height(); ++r)")));
+    QVERIFY(!shadowsSource.contains(QStringLiteral("for (int r = baseRow + 1; r <= corner.height(); ++r)")));
 }
 
 void SourceContractTest::qmlCacheRevisionInvalidatesSameVersionBuilds()

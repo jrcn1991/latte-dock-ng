@@ -5,14 +5,13 @@
 
 #include "panelbackground.h"
 
-#include <QSignalSpy>
 #include <QTest>
 
 class PlasmaExtendedUnitTest : public QObject
 {
     Q_OBJECT
 
-private Q_SLOTS:
+  private Q_SLOTS:
     void panelBackgroundStartsWithNeutralMetrics();
     void panelBackgroundForAllEdgesReturnsNeutralDefaults();
     void panelBackgroundPaddingsAreIndependentPerEdge();
@@ -20,9 +19,10 @@ private Q_SLOTS:
     void panelBackgroundRoundnessStartsAtZero();
 };
 
-void PlasmaExtendedUnitTest::panelBackgroundStartsWithNeutralMetrics()
+void
+PlasmaExtendedUnitTest::panelBackgroundStartsWithNeutralMetrics()
 {
-    for (auto edge : {Plasma::Types::TopEdge, Plasma::Types::RightEdge}) {
+    for (auto edge : { Plasma::Types::TopEdge, Plasma::Types::RightEdge }) {
         Latte::PlasmaExtended::PanelBackground bg(edge, nullptr);
         QCOMPARE(bg.paddingTop(), 0);
         QCOMPARE(bg.paddingLeft(), 0);
@@ -35,16 +35,18 @@ void PlasmaExtendedUnitTest::panelBackgroundStartsWithNeutralMetrics()
     }
 }
 
-void PlasmaExtendedUnitTest::panelBackgroundForAllEdgesReturnsNeutralDefaults()
+void
+PlasmaExtendedUnitTest::panelBackgroundForAllEdgesReturnsNeutralDefaults()
 {
-    for (auto edge : {Plasma::Types::TopEdge, Plasma::Types::LeftEdge, Plasma::Types::BottomEdge, Plasma::Types::RightEdge}) {
+    for (auto edge : { Plasma::Types::TopEdge, Plasma::Types::LeftEdge, Plasma::Types::BottomEdge, Plasma::Types::RightEdge }) {
         Latte::PlasmaExtended::PanelBackground bg(edge, nullptr);
         QCOMPARE(bg.paddingTop(), 0);
         QCOMPARE(bg.shadowSize(), 0);
     }
 }
 
-void PlasmaExtendedUnitTest::panelBackgroundPaddingsAreIndependentPerEdge()
+void
+PlasmaExtendedUnitTest::panelBackgroundPaddingsAreIndependentPerEdge()
 {
     Latte::PlasmaExtended::PanelBackground top(Plasma::Types::TopEdge, nullptr);
     Latte::PlasmaExtended::PanelBackground left(Plasma::Types::LeftEdge, nullptr);
@@ -57,13 +59,15 @@ void PlasmaExtendedUnitTest::panelBackgroundPaddingsAreIndependentPerEdge()
     QCOMPARE(right.maxOpacity(), 1.0f);
 }
 
-void PlasmaExtendedUnitTest::panelBackgroundShadowColorDefaultsToInvalid()
+void
+PlasmaExtendedUnitTest::panelBackgroundShadowColorDefaultsToInvalid()
 {
     Latte::PlasmaExtended::PanelBackground bg(Plasma::Types::TopEdge, nullptr);
     QVERIFY(!bg.shadowColor().isValid());
 }
 
-void PlasmaExtendedUnitTest::panelBackgroundRoundnessStartsAtZero()
+void
+PlasmaExtendedUnitTest::panelBackgroundRoundnessStartsAtZero()
 {
     Latte::PlasmaExtended::PanelBackground bg(Plasma::Types::BottomEdge, nullptr);
     QCOMPARE(bg.roundness(), 0);

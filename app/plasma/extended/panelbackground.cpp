@@ -20,25 +20,24 @@
 #define BASELINESHADOWTHRESHOLD 5
 
 #if defined(Q_CC_CLANG)
-    QT_WARNING_PUSH
-    QT_WARNING_DISABLE_CLANG("-Wcast-align")
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_CLANG("-Wcast-align")
 #endif
 
 namespace Latte {
 namespace PlasmaExtended {
 
 PanelBackground::PanelBackground(Plasma::Types::Location edge, Theme *parent)
-    : QObject(parent),
-      m_location(edge),
-      m_parentTheme(parent)
+  : QObject(parent)
+  , m_location(edge)
+  , m_parentTheme(parent)
 {
 }
 
-PanelBackground::~PanelBackground()
-{
-}
+PanelBackground::~PanelBackground() {}
 
-bool PanelBackground::hasMask(KSvg::Svg *svg) const
+bool
+PanelBackground::hasMask(KSvg::Svg *svg) const
 {
     if (!svg) {
         return false;
@@ -47,47 +46,40 @@ bool PanelBackground::hasMask(KSvg::Svg *svg) const
     return svg->hasElement(QStringLiteral("mask-topleft"));
 }
 
-int PanelBackground::paddingTop() const
-{
-    return m_paddingTop;
-}
+int
+PanelBackground::paddingTop() const
+{ return m_paddingTop; }
 
-int PanelBackground::paddingLeft() const
-{
-    return m_paddingLeft;
-}
+int
+PanelBackground::paddingLeft() const
+{ return m_paddingLeft; }
 
-int PanelBackground::paddingBottom() const
-{
-    return m_paddingBottom;
-}
+int
+PanelBackground::paddingBottom() const
+{ return m_paddingBottom; }
 
-int PanelBackground::paddingRight() const
-{
-    return m_paddingRight;
-}
+int
+PanelBackground::paddingRight() const
+{ return m_paddingRight; }
 
-int PanelBackground::roundness() const
-{
-    return m_roundness;
-}
+int
+PanelBackground::roundness() const
+{ return m_roundness; }
 
-int PanelBackground::shadowSize() const
-{
-    return m_shadowSize;
-}
+int
+PanelBackground::shadowSize() const
+{ return m_shadowSize; }
 
-float PanelBackground::maxOpacity() const
-{
-    return m_maxOpacity;
-}
+float
+PanelBackground::maxOpacity() const
+{ return m_maxOpacity; }
 
-QColor PanelBackground::shadowColor() const
-{
-    return m_shadowColor;
-}
+QColor
+PanelBackground::shadowColor() const
+{ return m_shadowColor; }
 
-QString PanelBackground::prefixed(const QString &id)
+QString
+PanelBackground::prefixed(const QString &id)
 {
     if (m_location == Plasma::Types::TopEdge) {
         return QStringLiteral("north-") + id;
@@ -102,7 +94,8 @@ QString PanelBackground::prefixed(const QString &id)
     return id;
 }
 
-QString PanelBackground::element(KSvg::Svg *svg, const QString &id)
+QString
+PanelBackground::element(KSvg::Svg *svg, const QString &id)
 {
     if (!svg) {
         return QString();
@@ -119,7 +112,8 @@ QString PanelBackground::element(KSvg::Svg *svg, const QString &id)
     return QString();
 }
 
-void PanelBackground::updateMaxOpacity(KSvg::Svg *svg)
+void
+PanelBackground::updateMaxOpacity(KSvg::Svg *svg)
 {
     if (!svg) {
         return;
@@ -131,7 +125,7 @@ void PanelBackground::updateMaxOpacity(KSvg::Svg *svg)
         center.convertTo(QImage::Format_ARGB32_Premultiplied);
     }
 
-    float alphasum{0};
+    float alphasum{ 0 };
 
     //! calculating the mid opacity (this is needed in order to handle Oxygen
     //! that has different opacity levels in the same center element)
@@ -155,7 +149,8 @@ void PanelBackground::updateMaxOpacity(KSvg::Svg *svg)
     Q_EMIT maxOpacityChanged();
 }
 
-void PanelBackground::updatePaddings(KSvg::Svg *svg)
+void
+PanelBackground::updatePaddings(KSvg::Svg *svg)
 {
     if (!svg) {
         return;
@@ -169,7 +164,8 @@ void PanelBackground::updatePaddings(KSvg::Svg *svg)
     Q_EMIT paddingsChanged();
 }
 
-void PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
+void
+PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
 {
     if (!svg) {
         return;
@@ -208,7 +204,7 @@ void PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
                     QRgb point = line[c];
 
                     if (qAlpha(point) > 0) {
-                        baseLineLength ++;
+                        baseLineLength++;
                     } else {
                         break;
                     }
@@ -245,7 +241,7 @@ void PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
                     }
                 }
 
-                //qCDebug(lattePlasma) << "   -> calculations: " << ", tail row :" <<  tailLimitR << " | head row: " << headLimitR;
+                // qCDebug(lattePlasma) << "   -> calculations: " << ", tail row :" <<  tailLimitR << " | head row: " << headLimitR;
 
                 if (headLimitR != tailLimitR) {
                     roundnessLines = tailLimitR - headLimitR + 1;
@@ -271,7 +267,7 @@ void PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
                     QRgb point = line[c];
 
                     if (qAlpha(point) > 0) {
-                        baseLineLength ++;
+                        baseLineLength++;
                     } else {
                         break;
                     }
@@ -308,7 +304,7 @@ void PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
                     }
                 }
 
-                //qCDebug(lattePlasma) << "   -> calculations: " << ", tail row :" <<  tailLimitR << " | head row: " << headLimitR;
+                // qCDebug(lattePlasma) << "   -> calculations: " << ", tail row :" <<  tailLimitR << " | head row: " << headLimitR;
 
                 if (headLimitR != tailLimitR) {
                     roundnessLines = headLimitR - tailLimitR + 1;
@@ -321,9 +317,8 @@ void PanelBackground::updateRoundnessFromMask(KSvg::Svg *svg)
     Q_EMIT roundnessChanged();
 }
 
-
-
-void PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
+void
+PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
 {
     //! 1.  Algorithm is choosing which corner shadow based on panel location
     //! 2.  For that corner discovers the maxOpacity (most solid shadow point) and
@@ -347,6 +342,16 @@ void PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
 
     QString cornerId = (topLeftCorner ? QStringLiteral("shadow-topleft") : QStringLiteral("shadow-bottomright"));
     QImage corner = svg->image(svg->elementSize(cornerId).toSize(), cornerId);
+
+    // Some themes advertise panel shadows without providing every corner asset.
+    // The shadow algorithm reads a base scanline, so an empty image would turn
+    // its -1 base row/column into an out-of-bounds access. Roundness is derived
+    // state; zero is the safe fallback until a complete shadow asset is present.
+    if (corner.isNull() || corner.width() == 0 || corner.height() == 0) {
+        m_roundness = 0;
+        Q_EMIT roundnessChanged();
+        return;
+    }
 
     if (corner.format() != QImage::Format_ARGB32_Premultiplied) {
         corner.convertTo(QImage::Format_ARGB32_Premultiplied);
@@ -421,7 +426,8 @@ void PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
                     roundnessLines = 0;
                 }
 
-                //qCDebug(lattePlasma) << "    -> line: " << r << ", low transparency pixels :" << transPixels << " | " << " rowMaxOpacity :"<< rowMaxOpacity << ", " << (transPixels != baseLineLength);
+                // qCDebug(lattePlasma) << "    -> line: " << r << ", low transparency pixels :" << transPixels << " | " << " rowMaxOpacity :"<< rowMaxOpacity << ", " << (transPixels !=
+                // baseLineLength);
             }
         }
     } else {
@@ -447,7 +453,7 @@ void PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
         qCDebug(lattePlasma) << " BOTTOM RIGHT CORNER SHADOW base line length :: " << baseLineLength << " with max shadow opacity : " << baseShadowMaxOpacity;
 
         if (baseLineLength > 0) {
-            for (int r = baseRow + 1; r <= corner.height(); ++r) {
+            for (int r = baseRow + 1; r < corner.height(); ++r) {
                 QRgb *line = reinterpret_cast<QRgb *>(corner.scanLine(r));
                 QRgb fpoint = line[baseCol];
 
@@ -487,7 +493,8 @@ void PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
                     roundnessLines = 0;
                 }
 
-                //qCDebug(lattePlasma) << "    -> line: " << r << ", low transparency pixels :" << transPixels << " | " << " rowMaxOpacity :"<< rowMaxOpacity << ", " << (transPixels != baseLineLength);
+                // qCDebug(lattePlasma) << "    -> line: " << r << ", low transparency pixels :" << transPixels << " | " << " rowMaxOpacity :"<< rowMaxOpacity << ", " << (transPixels !=
+                // baseLineLength);
             }
         }
     }
@@ -496,7 +503,8 @@ void PanelBackground::updateRoundnessFromShadows(KSvg::Svg *svg)
     Q_EMIT roundnessChanged();
 }
 
-void PanelBackground::updateRoundnessFallback(KSvg::Svg *svg)
+void
+PanelBackground::updateRoundnessFallback(KSvg::Svg *svg)
 {
     if (!svg) {
         return;
@@ -510,7 +518,7 @@ void PanelBackground::updateRoundnessFallback(KSvg::Svg *svg)
     }
 
     int discovRow = (m_location == Plasma::Types::LeftEdge ? corner.height() - 1 : 0);
-    int round{0};
+    int round{ 0 };
 
     int minOpacity = m_maxOpacity * 255;
 
@@ -548,7 +556,8 @@ void PanelBackground::updateRoundnessFallback(KSvg::Svg *svg)
     Q_EMIT roundnessChanged();
 }
 
-void PanelBackground::updateShadow(KSvg::Svg *svg)
+void
+PanelBackground::updateShadow(KSvg::Svg *svg)
 {
     if (!svg) {
         return;
@@ -562,7 +571,7 @@ void PanelBackground::updateShadow(KSvg::Svg *svg)
 
     bool horizontal = (m_location == Plasma::Types::BottomEdge || m_location == Plasma::Types::TopEdge);
 
-    QString borderId{QStringLiteral("shadow-top")};
+    QString borderId{ QStringLiteral("shadow-top") };
 
     if (m_location == Plasma::Types::TopEdge) {
         borderId = QStringLiteral("shadow-bottom");
@@ -579,7 +588,7 @@ void PanelBackground::updateShadow(KSvg::Svg *svg)
     }
 
     //! find shadow size through, plasma theme
-    int themeshadowsize{0};
+    int themeshadowsize{ 0 };
 
     if (m_location == Plasma::Types::TopEdge) {
         themeshadowsize = svg->elementSize(element(svg, QStringLiteral("shadow-hint-bottom-margin"))).height();
@@ -593,9 +602,9 @@ void PanelBackground::updateShadow(KSvg::Svg *svg)
 
     //! find shadow size through heuristics, elementsize provided through svg may not be valid because it could contain
     //! many fully transparent pixels in its edges
-    int discoveredshadowsize{0};
-    int firstPixel{-1};
-    int lastPixel{-1};
+    int discoveredshadowsize{ 0 };
+    int firstPixel{ -1 };
+    int lastPixel{ -1 };
 
     if (horizontal) {
         for (int y = 0; y < border.height(); ++y) {
@@ -633,7 +642,7 @@ void PanelBackground::updateShadow(KSvg::Svg *svg)
     m_shadowSize = qMax(themeshadowsize, discoveredshadowsize);
 
     //! find maximum shadow color applied
-    int maxopacity{0};
+    int maxopacity{ 0 };
 
     for (int r = 0; r < border.height(); ++r) {
         QRgb *line = reinterpret_cast<QRgb *>(border.scanLine(r));
@@ -650,8 +659,8 @@ void PanelBackground::updateShadow(KSvg::Svg *svg)
     }
 }
 
-
-void PanelBackground::updateRoundness(KSvg::Svg *svg)
+void
+PanelBackground::updateRoundness(KSvg::Svg *svg)
 {
     if (!svg) {
         return;
@@ -669,7 +678,8 @@ void PanelBackground::updateRoundness(KSvg::Svg *svg)
     }
 }
 
-void PanelBackground::update()
+void
+PanelBackground::update()
 {
     KSvg::Svg *backSvg = new KSvg::Svg(this);
     backSvg->setImagePath(QStringLiteral("widgets/panel-background"));
@@ -681,16 +691,15 @@ void PanelBackground::update()
     updateShadow(backSvg);
 
     qCDebug(lattePlasma) << " PLASMA THEME EXTENDED :: " << m_location << " | roundness:" << m_roundness << " center_max_opacity:" << m_maxOpacity;
-    qCDebug(lattePlasma) << " PLASMA THEME EXTENDED :: " << m_location
-                         << " | padtop:" << m_paddingTop << " padleft:" << m_paddingLeft
-                         << " padbottom:" << m_paddingBottom << " padright:" << m_paddingRight;
+    qCDebug(lattePlasma) << " PLASMA THEME EXTENDED :: " << m_location << " | padtop:" << m_paddingTop << " padleft:" << m_paddingLeft << " padbottom:" << m_paddingBottom
+                         << " padright:" << m_paddingRight;
     qCDebug(lattePlasma) << " PLASMA THEME EXTENDED :: " << m_location << " | shadowsize:" << m_shadowSize << " shadowcolor:" << m_shadowColor;
 
     backSvg->deleteLater();
 }
 
 #if defined(Q_CC_CLANG)
-    QT_WARNING_POP
+QT_WARNING_POP
 #endif
 
 }

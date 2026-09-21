@@ -283,7 +283,10 @@ BackgroundProperties{
     //!current shadow state but do not change other values of normal mode, for example if a Dock hides its screen edge thickness
     //!shouldn't change the fact that customShadowedRectangle is still used
     readonly property bool customShadowIsEnabled: (customDefShadowIsEnabled || customUserShadowIsEnabled) && panelShadowsActive
-    readonly property bool customDefShadowIsEnabled: customShadowIsSupported && !customUserShadowIsEnabled && customRadiusIsEnabled
+    // Classic mode can change the background radius without replacing the theme-provided
+    // shadow. Keep the custom default shadow exclusive to Modern mode; otherwise moving
+    // only the Radius slider silently changes a Default shadow into a synthesized one.
+    readonly property bool customDefShadowIsEnabled: modernDockStyle && customShadowIsSupported && !customUserShadowIsEnabled && customRadiusIsEnabled
     readonly property bool customUserShadowIsEnabled: customShadowIsSupported && plasmoid.configuration.backgroundShadowSize >= 0
 
     readonly property bool customRadiusIsEnabled: kirigamiLibraryIsFound && (modernDockStyle || plasmoid.configuration.backgroundRadius >= 0 || !plasmoid.configuration.backgroundAllCorners)
@@ -377,7 +380,7 @@ BackgroundProperties{
         readonly property bool hideShadow: !LatteCore.WindowSystem.compositingActive
                                            || !root.panelShadowsActive
                                            || !themeHasShadow
-                                           || barLine.customShadowedRectangleIsEnabled
+                                           || barLine.customShadowIsEnabled
 
         Behavior on opacity {
             NumberAnimation { duration: LatteCore.WindowSystem.compositingActive ? barLine.animationTime : 0 }
