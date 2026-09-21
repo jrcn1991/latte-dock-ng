@@ -11,6 +11,7 @@
 
 // Qt
 #include <QList>
+#include <QMargins>
 #include <QRect>
 
 // Plasma
@@ -162,6 +163,35 @@ inline QRect verticalDockExternalPanelGeometry(const QRect &screenGeometry, cons
     return result;
 }
 
+// Returns content-only margins for horizontal Plasma panels. The Latte
+// window remains full-screen so its background continues beneath the panel.
+inline QMargins verticalDockExternalPanelMargins(const QRect &screenGeometry, const QList<QRect> &panelGeometries)
+{
+    if (!screenGeometry.isValid()) {
+        return {};
+    }
+
+    int top = 0;
+    int bottom = 0;
+
+    for (const QRect &panelGeometry : panelGeometries) {
+        if (!panelGeometry.isValid() || !screenGeometry.intersects(panelGeometry)
+            || panelGeometry.width() <= panelGeometry.height()) {
+            continue;
+        }
+
+        // Classify floating panels by the nearest screen edge and retain their
+        // edge gap in the content margin.
+        if (panelGeometry.center().y() <= screenGeometry.center().y()) {
+            top = qMax(top, qMax(0, panelGeometry.bottom() - screenGeometry.top() + 1));
+        } else {
+            bottom = qMax(bottom, qMax(0, screenGeometry.bottom() - panelGeometry.top() + 1));
+        }
+    }
+
+    return QMargins(0, top, 0, bottom);
+}
+
 inline QRect screenEdgePanelGeometry(const QRect &screenGeometry, Plasma::Types::Location location, int thickness)
 {
     if (!screenGeometry.isValid() || thickness <= 0) {
@@ -186,6 +216,22 @@ inline QRect screenEdgePanelGeometry(const QRect &screenGeometry, Plasma::Types:
         default:
             return QRect();
     }
+}
+
+inline QMargins externalPanelContentMargins(const QRect &screen, const QRect &dockStrip,
+        const QList<QRect> &panels, bool vertical)
+{
+    auto transpose = [](const QRect &r) { return QRect(r.y(), r.x(), r.height(), r.width()); };
+    QList<QRect> overlaps;
+    for (const QRect &panel : panels) {
+        // A neighbouring output's panel, or a short floating panel that does
+        // not reach this dock, must not move this view's applets.
+        if (panel.isValid() && screen.contains(panel.center()) && dockStrip.intersects(panel)) {
+            overlaps.append(vertical ? panel : transpose(panel));
+        }
+    }
+    const QMargins margins = verticalDockExternalPanelMargins(vertical ? screen : transpose(screen), overlaps);
+    return vertical ? margins : QMargins(margins.top(), 0, margins.bottom(), 0);
 }
 
 }

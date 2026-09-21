@@ -14,6 +14,7 @@
 
 // Qt
 #include <QObject>
+#include <QMargins>
 #include <QPointer>
 #include <QScreen>
 #include <QTimer>
@@ -48,6 +49,10 @@ class Positioner: public QObject
     Q_PROPERTY(int currentScreenId READ currentScreenId NOTIFY currentScreenChanged)
 
     Q_PROPERTY(QRect canvasGeometry READ canvasGeometry NOTIFY canvasGeometryChanged)
+    Q_PROPERTY(int externalPanelTopMargin READ externalPanelTopMargin NOTIFY externalPanelMarginsChanged)
+    Q_PROPERTY(int externalPanelBottomMargin READ externalPanelBottomMargin NOTIFY externalPanelMarginsChanged)
+    Q_PROPERTY(int externalPanelLeftMargin READ externalPanelLeftMargin NOTIFY externalPanelMarginsChanged)
+    Q_PROPERTY(int externalPanelRightMargin READ externalPanelRightMargin NOTIFY externalPanelMarginsChanged)
 
     //! animating window slide
     Q_PROPERTY(int slideOffset READ slideOffset WRITE setSlideOffset NOTIFY slideOffsetChanged)
@@ -83,6 +88,10 @@ public:
     bool isOffScreen() const;
 
     QRect canvasGeometry();
+    int externalPanelTopMargin() const;
+    int externalPanelBottomMargin() const;
+    int externalPanelLeftMargin() const { return m_externalPanelMargins.left(); }
+    int externalPanelRightMargin() const { return m_externalPanelMargins.right(); }
 
     void setScreenToFollow(QScreen *scr, bool updateScreenId = true);
     void setWindowOnActivities(const Latte::WindowSystem::WindowId &wid, const QStringList &activities);
@@ -108,6 +117,7 @@ public Q_SLOTS:
 
 Q_SIGNALS:
     void canvasGeometryChanged();
+    void externalPanelMarginsChanged();
     void currentScreenChanged();
     void edgeChanged();
     void screenGeometryChanged();
@@ -155,6 +165,7 @@ private:
     void validateTopBottomBorders(QRect availableScreenRect, QRegion availableScreenRegion);
 
     void setCanvasGeometry(const QRect &geometry);
+    void setExternalPanelMargins(const QMargins &margins);
 
     bool isLastHidingRelocationEvent() const;
 
@@ -181,6 +192,7 @@ private:
     //! it is used to update geometry calculations without requesting no needed Corona calculations
     QRect m_lastAvailableScreenRect;
     QRegion m_lastAvailableScreenRegion;
+    QMargins m_externalPanelMargins;
 
     QPointer<Latte::View> m_view;
     QPointer<Latte::Corona> m_corona;

@@ -1292,7 +1292,13 @@ ContainmentItem {
         anchors.fill: parent
 
         Item{
-            anchors.fill: layoutsContainer
+            // Follow slide animations on the thickness axis, but undo content
+            // avoidance on the length axis. Anchoring to the shortened content
+            // container shifted the centered background and left an end gap.
+            x: layoutsContainer.x - layoutsContainer.externalPanelLeftMargin
+            y: layoutsContainer.y - layoutsContainer.externalPanelTopMargin
+            width: layoutsContainer.width + layoutsContainer.externalPanelLeftMargin + layoutsContainer.externalPanelRightMargin
+            height: layoutsContainer.height + layoutsContainer.externalPanelTopMargin + layoutsContainer.externalPanelBottomMargin
 
             Background.MultiLayered{
                 id: _background

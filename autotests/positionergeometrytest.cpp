@@ -57,6 +57,10 @@ private Q_SLOTS:
     void twoMonitorsWithDocksOnDifferentEdges();
     void panelCoveringEntireTopEdge();
     void narrowSidePanelBesideWideBottomPanel();
+    void contentMarginsPreserveFullScreenForTopAndBottomPanels();
+    void floatingPanelGapIsIncludedInContentMargin();
+    void panelsOnOtherScreensAreIgnoredForContentMargins();
+    void contentMarginsRequireActualPerpendicularOverlap();
 };
 
 void PositionerGeometryTest::emptyPanelListPreservesScreenGeometry()
@@ -294,6 +298,38 @@ void PositionerGeometryTest::narrowSidePanelBesideWideBottomPanel()
     const QRect available = verticalDockExternalPanelGeometry(screen, panels);
     QCOMPARE(available.left(), 48);
     QCOMPARE(available.bottom(), 1039);
+}
+
+void PositionerGeometryTest::contentMarginsPreserveFullScreenForTopAndBottomPanels()
+{
+    const QRect screen(0, 0, 1920, 1080);
+    const QList<QRect> panels{QRect(0, 0, 1920, 40), QRect(0, 1040, 1920, 40)};
+    QCOMPARE(verticalDockExternalPanelMargins(screen, panels), QMargins(0, 40, 0, 40));
+}
+
+void PositionerGeometryTest::floatingPanelGapIsIncludedInContentMargin()
+{
+    const QRect screen(0, 0, 1920, 1080);
+    QCOMPARE(verticalDockExternalPanelMargins(screen, {QRect(120, 24, 1680, 36)}), QMargins(0, 60, 0, 0));
+    QCOMPARE(verticalDockExternalPanelMargins(screen, {QRect(120, 1020, 1680, 36)}), QMargins(0, 0, 0, 60));
+}
+
+void PositionerGeometryTest::panelsOnOtherScreensAreIgnoredForContentMargins()
+{
+    const QRect screen(-1920, 0, 1920, 1080);
+    const QList<QRect> panels{QRect(0, 0, 1920, 40), QRect(-1920, 0, 1920, 32)};
+    QCOMPARE(verticalDockExternalPanelMargins(screen, panels), QMargins(0, 32, 0, 0));
+}
+
+void PositionerGeometryTest::contentMarginsRequireActualPerpendicularOverlap()
+{
+    const QRect screen(-1920, 120, 1920, 1080);
+    const QRect left = screenEdgePanelGeometry(screen, Plasma::Types::LeftEdge, 48);
+    QCOMPARE(externalPanelContentMargins(screen, left, {QRect(-1920, 120, 1920, 56), QRect(0, 0, 1920, 40)}, true), QMargins(0, 56, 0, 0));
+    QCOMPARE(externalPanelContentMargins(screen, left, {QRect(-1800, 136, 1600, 40)}, true), QMargins());
+    QCOMPARE(externalPanelContentMargins(screen, left, {left}, true), QMargins());
+    const QRect top = screenEdgePanelGeometry(screen, Plasma::Types::TopEdge, 48);
+    QCOMPARE(externalPanelContentMargins(screen, top, {QRect(-1904, 120, 40, 1080), QRect(-56, 120, 40, 1080)}, false), QMargins(56, 0, 56, 0));
 }
 
 QTEST_APPLESS_MAIN(PositionerGeometryTest)

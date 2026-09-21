@@ -66,6 +66,7 @@ ecm_add_qtwayland_client_protocol(lattedock-app_SRCS
 )
 
 add_executable(latte-dock-ng ${lattedock-app_SRCS})
+qt_add_resources(latte-dock-ng "paneltracker" PREFIX "/latte" FILES wm/plasmapaneltracker.js)
 add_executable(latte-dock-ng-add-launcher launcherhelper.cpp)
 
 # The private.app QML plugin is hosted by this executable and resolves its

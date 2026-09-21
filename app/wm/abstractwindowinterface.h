@@ -110,6 +110,7 @@ public:
 
     bool hasBlockedTracking(const WindowId &wid) const;
     virtual QList<QRect> plasmaPanelGeometries();
+    virtual QList<QRect> livePlasmaPanelGeometries() { return {}; }
 
     QString currentDesktop();
     QString currentActivity();
@@ -147,6 +148,7 @@ Q_SIGNALS:
     void isShowingDesktopChanged();
 
     void latteWindowAdded();
+    void plasmaPanelGeometriesChanged();
 
 protected:
     QString m_currentDesktop;

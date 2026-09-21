@@ -985,6 +985,11 @@ add_test(NAME windowviewbackendtest
 set_property(TEST windowviewbackendtest PROPERTY TIMEOUT ${LATTE_AUTOTEST_TIMEOUT})
 list(APPEND latte_autotest_targets windowviewbackendtest)
 
+add_executable(plasmapaneltrackertest EXCLUDE_FROM_ALL plasmapaneltrackertest.cpp)
+target_link_libraries(plasmapaneltrackertest Qt6::Core Qt6::Qml Qt6::Test)
+target_compile_definitions(plasmapaneltrackertest PRIVATE PANEL_TRACKER_SCRIPT="${CMAKE_SOURCE_DIR}/app/wm/plasmapaneltracker.js")
+latte_add_test(plasmapaneltrackertest)
+
 # Some tests compile app sources directly, so they need the shared logging
 # categories (latte_debug.h) just like the application targets.
 foreach(_latte_test_target IN LISTS latte_autotest_targets)

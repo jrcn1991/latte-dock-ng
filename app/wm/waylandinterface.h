@@ -41,6 +41,7 @@ class GhostWindow;
 
 namespace Latte {
 namespace WindowSystem {
+class PlasmaPanelTracker;
 
 class WaylandInterface : public AbstractWindowInterface
 {
@@ -62,6 +63,7 @@ public:
     WindowInfoWrap requestInfoActive() override;
     bool hasSessionBlockingWindows() const override;
     QList<QRect> plasmaPanelGeometries() override;
+    QList<QRect> livePlasmaPanelGeometries() override;
 
     void skipTaskBar(const QDialog &dialog) override;
     void slideWindow(QWindow &view, Slide location) override;
@@ -145,6 +147,7 @@ private:
     mutable QHash<QWindow *, StrutCacheEntry> m_strutCache;
 
     QPointer<KWayland::Client::PlasmaWindowManagement> m_windowManagement;
+    PlasmaPanelTracker *m_panelTracker{nullptr};
 
     //! VirtualDesktopsSupport
     QPointer<KWayland::Client::PlasmaVirtualDesktopManagement> m_virtualDesktopManagement;

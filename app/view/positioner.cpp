@@ -161,6 +161,10 @@ void Positioner::init()
     connect(m_view, &QQuickWindow::screenChanged, this, &Positioner::onScreenChanged);
 
     connect(m_view, &Latte::View::maxThicknessChanged, this, &Positioner::syncGeometry);
+    connect(m_view, &Latte::View::normalThicknessChanged, this, &Positioner::syncGeometry);
+    connect(m_view, &Latte::View::alignmentChanged, this, &Positioner::syncGeometry);
+    connect(m_view, &Latte::View::maxLengthChanged, this, &Positioner::syncGeometry);
+    connect(m_corona->wm(), &WindowSystem::AbstractWindowInterface::plasmaPanelGeometriesChanged, this, &Positioner::syncGeometry);
 
     connect(m_view, &Latte::View::offsetChanged, this, [this]() {
         updatePosition(m_lastAvailableScreenRect);
@@ -511,6 +515,8 @@ void Positioner::immediateSyncGeometry()
         QRegion freeRegion;;
         QRect maximumRect;
         QRect availableScreenRect = m_view->screen()->geometry();
+        const bool fullLengthJustify = m_view->alignment() == Latte::Types::Justify
+                                       && qFuzzyCompare(m_view->maxLength(), 1.0f);
 
         if (m_inStartup) {
             //! paint out-of-screen
@@ -544,22 +550,26 @@ void Positioner::immediateSyncGeometry()
             }
 
             QString activityid = m_view->layout() ? m_view->layout()->lastUsedActivity() : QString();
+            QList<QRect> panelGeometries;
 
             if (m_inStartup) {
                 //! paint out-of-screen
                 freeRegion = availableScreenRect;
             } else {
-                freeRegion = latteCorona->availableScreenRegionWithCriteria(fixedScreen, activityid, ignoreModes, ignoreEdges);
+                panelGeometries = m_corona->wm()->plasmaPanelGeometries();
+                // External struts must not shorten the full-length background.
+                // Keep Latte neighbours in this region; only item content uses
+                // KWin's live Plasma panel geometry below.
+                freeRegion = latteCorona->availableScreenRegionWithCriteria(fixedScreen,
+                                                                            activityid,
+                                                                            ignoreModes,
+                                                                            ignoreEdges,
+                                                                            fullLengthJustify);
 
-                // Intersect with external panel geometry so that Plasma
-                // panels are respected regardless of dock alignment or length.
-                {
-                    const QList<QRect> panelGeometries = m_corona->wm()->plasmaPanelGeometries();
-
-                    if (!panelGeometries.isEmpty()) {
-                        freeRegion = freeRegion.intersected(
-                                         verticalDockExternalPanelGeometry(m_view->screen()->geometry(), panelGeometries));
-                    }
+                // Keep legacy window avoidance for non-full-length modes.
+                if (!fullLengthJustify && !panelGeometries.isEmpty()) {
+                    freeRegion = freeRegion.intersected(
+                                     verticalDockExternalPanelGeometry(m_view->screen()->geometry(), panelGeometries));
                 }
             }
 
@@ -600,6 +610,13 @@ void Positioner::immediateSyncGeometry()
         updatePosition(availableScreenRect);
         updateCanvasGeometry(availableScreenRect);
 
+        const bool vertical = effectiveFormFactorForView(m_view) == Plasma::Types::Vertical;
+        const QRect strip = screenEdgePanelGeometry(m_view->screen()->geometry(), effectiveLocationForView(m_view), m_view->normalThickness());
+        setExternalPanelMargins(fullLengthJustify && !m_inStartup
+                                ? externalPanelContentMargins(m_view->screen()->geometry(), strip,
+                                                              m_corona->wm()->livePlasmaPanelGeometries(), vertical)
+                                : QMargins());
+
         qCDebug(latteView) << "syncGeometry() calculations for screen: " << m_view->screen()->name() << " _ " << m_view->screen()->geometry();
         qCDebug(latteView) << "syncGeometry() calculations for edge: " << m_view->location();
     }
@@ -619,6 +636,27 @@ void Positioner::validateDockGeometry()
 QRect Positioner::canvasGeometry()
 {
     return m_canvasGeometry;
+}
+
+int Positioner::externalPanelTopMargin() const
+{
+    return m_externalPanelMargins.top();
+}
+
+int Positioner::externalPanelBottomMargin() const
+{
+    return m_externalPanelMargins.bottom();
+}
+
+void Positioner::setExternalPanelMargins(const QMargins &margins)
+{
+    if (m_externalPanelMargins == margins) {
+        return;
+    }
+
+    m_externalPanelMargins = margins;
+    qCDebug(latteView) << "Plasma content margins:" << m_view->screen()->name() << margins;
+    Q_EMIT externalPanelMarginsChanged();
 }
 
 void Positioner::setCanvasGeometry(const QRect &geometry)

@@ -33,6 +33,19 @@ Item{
 
     readonly property bool isHidden: root.inStartup || (latteView && latteView.visibility && latteView.visibility.isHidden)
 
+    // Keep the Latte window full-screen while moving the shared item layout
+    // away from a same-screen Plasma panel.
+    readonly property int externalPanelTopMargin: root.isVertical && effectiveItemsAlignment === LatteCore.types.Top && latteView && latteView.positioner
+                                                   ? latteView.positioner.externalPanelTopMargin : 0
+    readonly property int externalPanelBottomMargin: root.isVertical && effectiveItemsAlignment === LatteCore.types.Bottom && latteView && latteView.positioner
+                                                      ? latteView.positioner.externalPanelBottomMargin : 0
+    readonly property int externalPanelLeftMargin: root.isHorizontal && effectiveItemsAlignment === LatteCore.types.Left && latteView && latteView.positioner
+                                                   ? latteView.positioner.externalPanelLeftMargin : 0
+    readonly property int externalPanelRightMargin: root.isHorizontal && effectiveItemsAlignment === LatteCore.types.Right && latteView && latteView.positioner
+                                                    ? latteView.positioner.externalPanelRightMargin : 0
+    readonly property int externalPanelLengthMargins: externalPanelTopMargin + externalPanelBottomMargin
+                                                     + externalPanelLeftMargin + externalPanelRightMargin
+
     property int currentSpot: -1000
 
     readonly property alias startLayout : _startLayout
@@ -49,10 +62,10 @@ Item{
         value: {
             if (latteView && root.isHorizontal && root.myView.alignment === LatteCore.types.Justify) {
                 if (root.isModernDockStyle) {
-                    return 0;
+                    return layoutsContainer.externalPanelLeftMargin;
                 }
 
-                return ((latteView.width/2) - (root.maxLength/2) + background.offset);
+                return ((latteView.width/2) - (root.maxLength/2) + background.offset + layoutsContainer.externalPanelLeftMargin);
             } else {
                 if ((root.myView.inSlidingIn || root.myView.inSlidingOut) && root.isVertical){
                     return;
@@ -82,10 +95,10 @@ Item{
         value: {
             if (latteView && root.isVertical && root.myView.alignment === LatteCore.types.Justify) {
                 if (root.isModernDockStyle) {
-                    return 0;
+                    return layoutsContainer.externalPanelTopMargin;
                 }
 
-                return ((latteView.height/2) - (root.maxLength/2) + background.offset);
+                return ((latteView.height/2) - (root.maxLength/2) + background.offset + layoutsContainer.externalPanelTopMargin);
             } else {
                 if ((root.myView.inSlidingIn || root.myView.inSlidingOut) && root.isHorizontal){
                     return;
@@ -102,14 +115,18 @@ Item{
                         }
                     }
                 } else {
-                    return 0;
+                    return layoutsContainer.externalPanelTopMargin;
                 }
             }
         }
     }
 
-    width: root.isHorizontal && root.myView.alignment === LatteCore.types.Justify && !root.isModernDockStyle ? root.maxLength : parent.width
-    height: root.isVertical && root.myView.alignment === LatteCore.types.Justify && !root.isModernDockStyle ? root.maxLength : parent.height
+    width: Math.max(0, (root.isHorizontal && root.myView.alignment === LatteCore.types.Justify && !root.isModernDockStyle ? root.maxLength : parent.width)
+                   - externalPanelLeftMargin - externalPanelRightMargin)
+    height: root.isVertical
+            ? Math.max(0, (root.myView.alignment === LatteCore.types.Justify && !root.isModernDockStyle ? root.maxLength : parent.height)
+                       - externalPanelTopMargin - externalPanelBottomMargin)
+            : parent.height
     z:10
 
     property bool animationSent: false

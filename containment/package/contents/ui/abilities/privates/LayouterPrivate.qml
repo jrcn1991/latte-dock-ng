@@ -19,7 +19,7 @@ Item {
 
     readonly property int maxLength: root.myView.alignment === LatteCore.types.Justify ? contentsMaxLength : Math.min(root.minLength, contentsMaxLength)
 
-    readonly property int contentsMaxLength: root.maxLength - background.totals.paddingsLength
+    readonly property int contentsMaxLength: Math.max(0, root.maxLength - background.totals.paddingsLength - layouts.externalPanelLengthMargins)
 
     readonly property Item startLayout: LayouterElements.AppletsContainer {
         grid: layouts.startLayout

@@ -7,6 +7,7 @@
 
 #include <latte_debug.h>
 #include "waylandinterface.h"
+#include "plasmapaneltracker.h"
 
 // local
 #include "../apptypes.h"
@@ -298,6 +299,8 @@ WaylandInterface::WaylandInterface(QObject *parent)
     : AbstractWindowInterface(parent)
 {
     m_corona = qobject_cast<Latte::Corona *>(parent);
+    m_panelTracker = new PlasmaPanelTracker(this);
+    connect(m_panelTracker, &PlasmaPanelTracker::changed, this, &AbstractWindowInterface::plasmaPanelGeometriesChanged);
 }
 
 WaylandInterface::~WaylandInterface()
@@ -909,6 +912,11 @@ QList<KWayland::Client::PlasmaWindow *> WaylandInterface::managedWindows() const
 QList<QRect> WaylandInterface::plasmaPanelGeometries()
 {
     return plasmaPanelGeometriesFromConfig();
+}
+
+QList<QRect> WaylandInterface::livePlasmaPanelGeometries()
+{
+    return m_panelTracker->geometries();
 }
 
 QIcon WaylandInterface::iconFor(WindowId wid)
