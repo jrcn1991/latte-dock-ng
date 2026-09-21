@@ -1,4 +1,12 @@
-## [Unreleased]
+## [v1.2.50] - 2026-09-21
+
+### Fixed
+- Preserve the theme default panel shadow when changing the custom background radius.
+- Prevent incomplete theme shadow assets from causing invalid image scans or crashes.
+- Keep Debian testing package builds and Ubuntu-derived `.deb` installation checks aligned.
+
+### Tests
+- Add GCC and Clang coverage for the panel shadow selection matrix and incomplete theme assets.
 
 ## [v1.2.49] - 2026-09-18
 

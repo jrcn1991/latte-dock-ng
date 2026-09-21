@@ -45,6 +45,7 @@ private Q_SLOTS:
     void appearancePaletteExposesLayoutCustomColors();
     void modernDockBackgroundShadowDefaultIsCompact();
     void classicCustomRadiusPreservesThemeDefaultShadow();
+    void panelShadowSelectionMatrixIsStable();
     void layoutDetailsExposeCustomColorSchemeSelector();
     void showWindowAnimationContractMovedToQmlSmokeTest();
     void parabolicItemContractMovedToQmlSmokeTest();
@@ -1462,6 +1463,21 @@ void SourceContractTest::classicCustomRadiusPreservesThemeDefaultShadow()
         "readonly property bool customDefShadowIsEnabled: modernDockStyle && customShadowIsSupported && !customUserShadowIsEnabled && customRadiusIsEnabled")));
     QVERIFY(backgroundSource.contains(QStringLiteral("|| barLine.customShadowIsEnabled")));
     QVERIFY(!backgroundSource.contains(QStringLiteral("|| barLine.customShadowedRectangleIsEnabled\n\n        Behavior on opacity")));
+}
+
+void SourceContractTest::panelShadowSelectionMatrixIsStable()
+{
+    QFile backgroundFile(QStringLiteral(LATTE_SOURCE_DIR "/containment/package/contents/ui/background/MultiLayered.qml"));
+    QVERIFY(backgroundFile.open(QFile::ReadOnly));
+    const QString backgroundSource = QString::fromUtf8(backgroundFile.readAll());
+
+    QVERIFY(backgroundSource.contains(QStringLiteral(
+        "readonly property bool customUserShadowIsEnabled: customShadowIsSupported && plasmoid.configuration.backgroundShadowSize >= 0")));
+    QVERIFY(backgroundSource.contains(QStringLiteral(
+        "readonly property bool customShadowIsEnabled: (customDefShadowIsEnabled || customUserShadowIsEnabled) && panelShadowsActive")));
+    QVERIFY(backgroundSource.contains(QStringLiteral("if (!barLine.customShadowIsEnabled) {\n                    return 0; //! shadows toggled off by user")));
+    QVERIFY(backgroundSource.contains(QStringLiteral("if (barLine.customUserShadowIsEnabled) {\n                    return barLine.customShadow; //! user explicitly set a shadow size")));
+    QVERIFY(backgroundSource.contains(QStringLiteral("|| !root.panelShadowsActive\n                                           || !themeHasShadow\n                                           || barLine.customShadowIsEnabled")));
 }
 
 void SourceContractTest::layoutDetailsExposeCustomColorSchemeSelector()
