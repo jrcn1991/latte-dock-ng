@@ -12,7 +12,10 @@ Item {
     opacity: 0.4
 
     readonly property int gradientLength: appletAbilities.metrics.iconSize / 3
-    readonly property int thickness: appletAbilities.metrics.backgroundThickness
+    // The local backgroundThickness override used to mirror totals.thickness
+    // and could feed the metrics graph back into ParabolicItem during delegate
+    // creation. The totals object is the authoritative task thickness.
+    readonly property int thickness: appletAbilities.metrics.totals.thickness
     readonly property color appliedColor: appletAbilities.myView.itemShadow.shadowSolidColor
 
     property Item flickable

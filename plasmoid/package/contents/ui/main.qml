@@ -938,7 +938,6 @@ PlasmoidItem {
         launchers.syncer.isBlocked: root.inDraggingPhase
 
         metrics.local.iconSize: root.inPlasmaDesktop ? maxIconSizeInPlasma : (root.inPlasmaPanel ? Math.max(16, panelThickness - metrics.margin.tailThickness - metrics.margin.headThickness) : maxIconSizeInPlasma)
-        metrics.local.backgroundThickness: metrics.totals.thickness
         metrics.local.margin.length: 0.1 * metrics.iconSize
         metrics.local.margin.tailThickness: root.inPlasmaDesktop ? 0.16 * metrics.iconSize : Math.max(2, (panelThickness - maxIconSizeInPlasma) / 2)
         metrics.local.margin.headThickness: metrics.local.margin.tailThickness
