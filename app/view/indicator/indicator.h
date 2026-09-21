@@ -17,6 +17,7 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QQuickItem>
+#include <QTimer>
 
 // KDE
 #include <KConfigLoader>
@@ -138,6 +139,7 @@ private:
     void loadPlasmaComponent();
     void updateComponent();
     void updateScheme();
+    void flushConfig();
 
 private:
     bool m_enabled{true};
@@ -163,6 +165,7 @@ private:
     QPointer<IndicatorPart::Resources> m_resources;
 
     QPointer<KDeclarative::ConfigPropertyMap> m_configuration;
+    QTimer m_configSyncTimer;
 };
 
 }

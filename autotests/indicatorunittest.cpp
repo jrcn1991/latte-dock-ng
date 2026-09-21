@@ -7,12 +7,17 @@
 #include "importer.h"
 
 #include <KArchive/KZip>
+#include <KConfig>
+#include <KConfigGroup>
+#include <KConfigLoader>
+#include <KDeclarative/ConfigPropertyMap>
 #include <KPluginMetaData>
 
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
+#include <QTemporaryFile>
 #include <QTest>
 
 namespace {
@@ -85,6 +90,8 @@ private Q_SLOTS:
     void importIndicatorFileRejectsInvalidArchive();
     void importIndicatorFileRejectsInvalidMetadata();
     void importIndicatorFileReportsUpdatedStateForExistingIndicator();
+    void indicatorConfigurationMapWritesConfigToGroupOnModification();
+    void indicatorConfigurationMapBatchesRapidModifications();
 };
 
 void IndicatorUnitTest::metadataFileAbsolutePathPrefersJson()
@@ -213,6 +220,133 @@ void IndicatorUnitTest::importIndicatorFileReportsUpdatedStateForExistingIndicat
              static_cast<int>(Latte::ImportExport::UpdatedState));
     QVERIFY(!QFileInfo::exists(installPath + QStringLiteral("/stale.txt")));
     QVERIFY(QFileInfo::exists(installPath + QStringLiteral("/package/ui/main.qml")));
+}
+
+void IndicatorUnitTest::indicatorConfigurationMapWritesConfigToGroupOnModification()
+{
+    QTemporaryFile configFile;
+    QVERIFY(configFile.open());
+    const QString configPath = configFile.fileName();
+    configFile.close();
+
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    const QString xmlPath = writeFile(tempDir.path() + QStringLiteral("/main.xml"), QByteArray(R"(<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="size" type="Double">
+       <default>0.10</default>
+    </entry>
+    <entry name="glowEnabled" type="Bool">
+       <default>false</default>
+    </entry>
+  </group>
+</kcfg>)"));
+    QVERIFY(!xmlPath.isEmpty());
+
+    // Session 1: configure new values and verify writeConfig() commits them to disk
+    {
+        KConfig config(configPath, KConfig::SimpleConfig);
+        KConfigGroup indicatorGroup = config.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
+        KConfigGroup pluginGroup = indicatorGroup.group(QStringLiteral("org.kde.latte.default"));
+
+        QFile xmlFile(xmlPath);
+        auto *loader = new KConfigLoader(pluginGroup, &xmlFile, this);
+        auto *map = new KDeclarative::ConfigPropertyMap(loader, this);
+
+        QCOMPARE(map->value(QStringLiteral("size")).toDouble(), 0.10);
+        map->insert(QStringLiteral("size"), 0.35);
+        map->insert(QStringLiteral("glowEnabled"), true);
+
+        // writeConfig() is required in KF6 to commit in-memory skeleton properties to KConfigGroup
+        map->writeConfig();
+        indicatorGroup.sync();
+    }
+
+    // Session 2: reload from disk and verify values were preserved across sessions
+    {
+        KConfig config(configPath, KConfig::SimpleConfig);
+        KConfigGroup indicatorGroup = config.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
+        KConfigGroup pluginGroup = indicatorGroup.group(QStringLiteral("org.kde.latte.default"));
+
+        QFile xmlFile(xmlPath);
+        auto *loader = new KConfigLoader(pluginGroup, &xmlFile, this);
+        auto *map = new KDeclarative::ConfigPropertyMap(loader, this);
+
+        QCOMPARE(map->value(QStringLiteral("size")).toDouble(), 0.35);
+        QCOMPARE(map->value(QStringLiteral("glowEnabled")).toBool(), true);
+    }
+}
+
+void IndicatorUnitTest::indicatorConfigurationMapBatchesRapidModifications()
+{
+    QTemporaryFile configFile;
+    QVERIFY(configFile.open());
+    const QString configPath = configFile.fileName();
+    configFile.close();
+
+    QTemporaryDir tempDir;
+    QVERIFY(tempDir.isValid());
+    const QString xmlPath = writeFile(tempDir.path() + QStringLiteral("/main.xml"), QByteArray(R"(<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="size" type="Double">
+       <default>0.10</default>
+    </entry>
+  </group>
+</kcfg>)"));
+    QVERIFY(!xmlPath.isEmpty());
+
+    // We configure multiple updates using property map and a debouncing logic similar to indicator's updateScheme()
+    {
+        KConfig config(configPath, KConfig::SimpleConfig);
+        KConfigGroup indicatorGroup = config.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
+        KConfigGroup pluginGroup = indicatorGroup.group(QStringLiteral("org.kde.latte.default"));
+
+        QFile xmlFile(xmlPath);
+        auto *loader = new KConfigLoader(pluginGroup, &xmlFile, this);
+        auto *map = new KDeclarative::ConfigPropertyMap(loader, this);
+
+        QTimer debounceTimer;
+        debounceTimer.setSingleShot(true);
+        debounceTimer.setInterval(200);
+
+        connect(map, &QQmlPropertyMap::valueChanged, this, [&debounceTimer]() {
+            debounceTimer.start();
+        });
+
+        connect(&debounceTimer, &QTimer::timeout, this, [map, &indicatorGroup]() {
+            map->writeConfig();
+            indicatorGroup.sync();
+        });
+
+        // Simulate rapid changes
+        map->insert(QStringLiteral("size"), 0.15);
+        map->insert(QStringLiteral("size"), 0.20);
+        map->insert(QStringLiteral("size"), 0.25);
+        map->insert(QStringLiteral("size"), 0.35);
+
+        // Verify configuration on disk has not been updated yet
+        {
+            KConfig verifyConfig(configPath, KConfig::SimpleConfig);
+            KConfigGroup verifyIndicatorGroup = verifyConfig.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
+            KConfigGroup verifyPluginGroup = verifyIndicatorGroup.group(QStringLiteral("org.kde.latte.default"));
+            QCOMPARE(verifyPluginGroup.readEntry(QStringLiteral("size"), 0.10), 0.10);
+        }
+
+        // Wait for timer to trigger
+        QTest::qWait(300);
+
+        // Verify configuration on disk is updated with the batched value
+        {
+            KConfig verifyConfig(configPath, KConfig::SimpleConfig);
+            KConfigGroup verifyIndicatorGroup = verifyConfig.group(QStringLiteral("Containments")).group(QStringLiteral("1")).group(QStringLiteral("Indicator"));
+            KConfigGroup verifyPluginGroup = verifyIndicatorGroup.group(QStringLiteral("org.kde.latte.default"));
+            QCOMPARE(verifyPluginGroup.readEntry(QStringLiteral("size"), 0.10), 0.35);
+        }
+    }
 }
 
 QTEST_MAIN(IndicatorUnitTest)
