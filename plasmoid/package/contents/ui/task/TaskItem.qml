@@ -1236,10 +1236,13 @@ AbilityItem.BasicItem {
     ///Item's Removal Animation
     TaskAnimations.RealRemovalAnimation{ id: taskRealRemovalAnimation }
 
-    ListView.onRemove: function() {
-        taskRealRemovalAnimation.stop();
-        taskRealRemovalAnimation.start();
+    TaskAnimations.RemovalScheduler {
+        id: removalScheduler
+        task: taskItem
+        animation: taskRealRemovalAnimation
     }
+
+    ListView.onRemove: removalScheduler.schedule()
 
     onIsLauncherAnimationRunningChanged: {
         if (!isLauncherAnimationRunning && taskRealRemovalAnimation.paused) {

@@ -66,6 +66,8 @@ private Q_SLOTS:
     void latteCoreQmlPluginLoadsFromBuildTree();
     void showWindowAnimationFrozenZoomDecisionLoadsFromSource();
     void parabolicItemZoomRecoveryLoadsFromSource();
+    void taskRemovalDefersGeometryFeedback_data();
+    void taskRemovalDefersGeometryFeedback();
     void compactAppletPopupSizingLoadsFromSource();
     void launchersGeometryRestoreSchedulingLoadsFromSource();
     void plasmaVolumeBootstrapLoadsFromSource();
@@ -198,9 +200,11 @@ class AbilityItemStub : public QObject
     Q_PROPERTY(bool parabolicAreaContainsMouse READ parabolicAreaContainsMouse CONSTANT)
 
 public:
-    explicit AbilityItemStub(QObject *parabolicItem, QObject *parent = nullptr)
+    explicit AbilityItemStub(QObject *parabolicItem, QObject *parent = nullptr, bool horizontal = true, bool separator = false)
         : QObject(parent)
-        , m_parabolicItem(parabolicItem) {
+        , m_parabolicItem(parabolicItem)
+        , m_horizontal(horizontal)
+        , m_separator(separator) {
     }
 
     QObject *parabolicItem() const {
@@ -253,11 +257,11 @@ public:
     }
 
     bool isHorizontal() const {
-        return true;
+        return m_horizontal;
     }
 
     bool isVertical() const {
-        return false;
+        return !m_horizontal;
     }
 
     bool isVisible() const {
@@ -274,7 +278,7 @@ public:
     }
 
     bool isSeparator() const {
-        return false;
+        return m_separator;
     }
 
     bool isHidden() const {
@@ -349,6 +353,8 @@ Q_SIGNALS:
 
 private:
     QObject *m_parabolicItem{nullptr};
+    bool m_horizontal{true};
+    bool m_separator{false};
     bool m_visible{true};
     ParabolicAbilityStub m_parabolic;
     EventSinkStub m_needBothAxis;
@@ -1010,6 +1016,136 @@ void QmlSmokeTest::parabolicItemZoomRecoveryLoadsFromSource()
     QVERIFY(!object->property("isZoomed").toBool());
     QCOMPARE(abilityItem.needBothAxisRemoveCount(), removedBefore + 1);
     QVERIFY(abilityItem.needBothAxisAddCount() > 0);
+}
+
+void
+QmlSmokeTest::taskRemovalDefersGeometryFeedback_data()
+{
+    QTest::addColumn<bool>("vertical");
+    QTest::addColumn<int>("duration");
+    QTest::addColumn<bool>("destroyPending");
+    QTest::addColumn<bool>("separator");
+    for (bool vertical : { false, true }) {
+        for (int duration : { 0, 40 }) {
+            for (bool destroyPending : { false, true }) {
+                const QByteArray name = QByteArray::number(vertical) + '-' + QByteArray::number(duration) + '-' + QByteArray::number(destroyPending);
+                QTest::newRow(name.constData()) << vertical << duration << destroyPending << false;
+            }
+        }
+        const QByteArray name = QByteArray("separator-") + QByteArray::number(vertical);
+        QTest::newRow(name.constData()) << vertical << 0 << false << true;
+    }
+}
+
+void
+QmlSmokeTest::taskRemovalDefersGeometryFeedback()
+{
+    QFETCH(bool, vertical);
+    QFETCH(int, duration);
+    QFETCH(bool, destroyPending);
+    QFETCH(bool, separator);
+    QTemporaryDir importRoot;
+    QQmlEngine engine;
+    addLatteCoreImport(engine, importRoot);
+    addLatteComponentsImport(engine, importRoot);
+    addFakePlasmaCoreImport(engine, importRoot);
+    QStringList warnings;
+    connect(&engine, &QQmlEngine::warnings, &engine, [&warnings](const QList<QQmlError> &errors) {
+        for (const QQmlError &error : errors) {
+            warnings.append(error.toString());
+        }
+    });
+    ParabolicTargetStub target;
+    AbilityItemStub abilityItem(&target, nullptr, !vertical, separator);
+    PlasmoidStub plasmoid;
+    EventSinkStub events;
+    engine.rootContext()->setContextProperty(QStringLiteral("abilityItem"), &abilityItem);
+    engine.rootContext()->setContextProperty(QStringLiteral("plasmoid"), &plasmoid);
+    engine.rootContext()->setContextProperty(QStringLiteral("events"), &events);
+    engine.rootContext()->setContextProperty(QStringLiteral("animationDuration"), duration);
+    engine.rootContext()->setContextProperty(QStringLiteral("theme"), QVariantMap{ { QStringLiteral("textColor"), QColor(Qt::white) } });
+    engine.rootContext()->setContextProperty(QStringLiteral("latteBridge"), QVariant());
+    const QByteArray source = QStringLiteral(R"(
+import QtQuick
+import "%1" as Items
+import "%2" as Animations
+ListView {
+    id: view
+    width: 400; height: 400
+    property var delegateObject: null
+    property bool armed: false
+    property int starts: 0
+    property int finishes: 0
+    property int removals: 0
+    property int destructions: 0
+    model: ListModel { id: entries; ListElement { name: "task" } }
+    delegate: Item {
+        id: task
+        width: parabolic.width
+        height: parabolic.height
+        property alias parabolic: parabolic
+        property bool held: ListView.delayRemove
+        function geometryChanged() {
+            if (view.armed) {
+                view.armed = false;
+                entries.remove(0);
+                view.forceLayout();
+            }
+        }
+        onWidthChanged: geometryChanged()
+        onHeightChanged: geometryChanged()
+        Component.onCompleted: view.delegateObject = task
+        Component.onDestruction: view.destructions++
+        Items.ParabolicItem { id: parabolic }
+        Animations.RemovalScheduler { id: scheduler; task: task; animation: removal }
+        ListView.onRemove: {
+            view.removals++;
+            scheduler.schedule();
+            scheduler.schedule(); // Repeated notifications must coalesce.
+        }
+        SequentialAnimation {
+            id: removal
+            PropertyAction { target: task; property: "ListView.delayRemove"; value: !abilityItem.isSeparator }
+            ScriptAction { script: { view.starts++; events.addEvent("removal"); } }
+            PropertyAction { target: parabolic; property: "zoomThickness"; value: 0 }
+            NumberAnimation { target: parabolic; property: "zoomLength"; to: 0; duration: animationDuration }
+            ScriptAction { script: view.finishes++ }
+            PropertyAction { target: task; property: "ListView.delayRemove"; value: false }
+        }
+    }
+    function exercise() {
+        if (abilityItem.isSeparator) {
+            entries.remove(0);
+            forceLayout();
+            return;
+        }
+        armed = true;
+        delegateObject.parabolic.zoomThickness = 0.5;
+    }
+}
+)")
+                                .arg(QUrl::fromLocalFile(QStringLiteral(LATTE_SOURCE_DIR "/declarativeimports/abilities/items/basicitem")).toString(),
+                                     QUrl::fromLocalFile(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/task/animations")).toString())
+                                .toUtf8();
+    auto object = createQmlObject(engine, source, QUrl(QStringLiteral("qrc:/removal-feedback.qml")));
+    QVERIFY(object);
+    QTRY_VERIFY(object->property("delegateObject").value<QObject *>());
+    QObject *delegate = object->property("delegateObject").value<QObject *>();
+    QVERIFY(QMetaObject::invokeMethod(object.get(), "exercise"));
+    QCOMPARE(object->property("removals").toInt(), 1);
+    QCOMPARE(object->property("starts").toInt(), 0);
+    QVERIFY(delegate->property("held").toBool());
+    if (destroyPending) {
+        object.reset();
+        QTest::qWait(80);
+        QCOMPARE(events.addCount(), 0);
+    } else {
+        QTRY_COMPARE(object->property("finishes").toInt(), 1);
+        QTRY_COMPARE(object->property("destructions").toInt(), 1);
+        QCOMPARE(object->property("starts").toInt(), 1);
+        QCOMPARE(events.addCount(), 1);
+    }
+    QVERIFY2(warnings.isEmpty(), qPrintable(warnings.join(QLatin1Char('\n'))));
 }
 
 void QmlSmokeTest::compactAppletPopupSizingLoadsFromSource()

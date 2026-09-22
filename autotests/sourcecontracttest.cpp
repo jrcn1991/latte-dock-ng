@@ -15,6 +15,7 @@ class SourceContractTest : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void taskRemovalDefersAnimationOutsideGeometryBindings();
     void plasmaVolumeBootstrapContractMovedToQmlSmokeTest();
     void compactAppletPopupSizingContractMovedToQmlSmokeTest();
     void applicationLauncherUsesFixedExternalSlot();
@@ -4383,6 +4384,19 @@ void SourceContractTest::qmlCacheRevisionInvalidatesSameVersionBuilds()
     const QString mainSource = QString::fromUtf8(mainSourceFile.readAll());
     QVERIFY(mainSource.contains(QStringLiteral("Latte::App::QMLCACHEREVISION")));
     QVERIFY(mainSource.contains(QStringLiteral("cachedVersion != currentVersion")));
+}
+
+void
+SourceContractTest::taskRemovalDefersAnimationOutsideGeometryBindings()
+{
+    QFile task(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/task/TaskItem.qml"));
+    QVERIFY(task.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(task.readAll());
+    // The executable QML test covers scheduler behavior; this locks its wiring
+    // into the full Plasma-hosted delegate, which cannot load in isolation.
+    QVERIFY(source.contains(QStringLiteral("ListView.onRemove: removalScheduler.schedule()")));
+    QVERIFY(source.contains(QStringLiteral("animation: taskRealRemovalAnimation")));
+    QVERIFY(source.contains(QStringLiteral("task: taskItem")));
 }
 
 QTEST_MAIN(SourceContractTest)
