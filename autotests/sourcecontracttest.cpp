@@ -18,6 +18,7 @@ private Q_SLOTS:
     void taskRemovalDefersAnimationOutsideGeometryBindings();
     void externalTouchingBindingsGuardClearedScreenGeometry();
     void viewTeardownBindingsGuardClearedVisibility();
+    void taskBackgroundThicknessKeepsItsMetricsContract();
     void plasmaVolumeBootstrapContractMovedToQmlSmokeTest();
     void compactAppletPopupSizingContractMovedToQmlSmokeTest();
     void applicationLauncherUsesFixedExternalSlot();
@@ -4425,6 +4426,23 @@ SourceContractTest::viewTeardownBindingsGuardClearedVisibility()
     QVERIFY(visibilityManager.open(QFile::ReadOnly));
     const QString visibilitySource = QString::fromUtf8(visibilityManager.readAll());
     QVERIFY(visibilitySource.contains(QStringLiteral("latteView && latteView.visibility && latteView.visibility.isHidden")));
+}
+
+void
+SourceContractTest::taskBackgroundThicknessKeepsItsMetricsContract()
+{
+    QFile taskMain(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/main.qml"));
+    QVERIFY(taskMain.open(QFile::ReadOnly));
+    const QString taskMainSource = QString::fromUtf8(taskMain.readAll());
+    QVERIFY(taskMainSource.contains(QStringLiteral("metrics.local.backgroundThickness: metrics.totals.thickness")));
+
+    QFile shadows(QStringLiteral(LATTE_SOURCE_DIR "/plasmoid/package/contents/ui/taskslayout/ScrollEdgeShadows.qml"));
+    QVERIFY(shadows.open(QFile::ReadOnly));
+    const QString shadowsSource = QString::fromUtf8(shadows.readAll());
+    // Shadow sizing follows the background thickness property so custom metric
+    // overrides stay authoritative for task-edge visuals.
+    QVERIFY(shadowsSource.contains(QStringLiteral("readonly property int thickness: appletAbilities.metrics.backgroundThickness")));
+    QVERIFY(!shadowsSource.contains(QStringLiteral("readonly property int thickness: appletAbilities.metrics.totals.thickness")));
 }
 
 QTEST_MAIN(SourceContractTest)
