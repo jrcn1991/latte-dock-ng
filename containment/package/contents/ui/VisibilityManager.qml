@@ -68,8 +68,10 @@ Item{
 
     function recomputeInNormalState() {
         var wasNormal = inNormalState;
+        // The view may outlive its visibility object briefly during teardown;
+        // queued animation count changes must not dereference that cleared state.
         inNormalState = ((animations.needBothAxis.count === 0) && (animations.needLength.count === 0))
-                     || (latteView && latteView.visibility.isHidden && !latteView.visibility.containsMouse && animations.needThickness.count === 0);
+                     || (latteView && latteView.visibility && latteView.visibility.isHidden && !latteView.visibility.containsMouse && animations.needThickness.count === 0);
         if (inNormalState && !wasNormal) {
             updateMaskArea();
         }

@@ -119,7 +119,10 @@ Item {
         property: "isTouchingTopViewAndIsBusy"
         when: root.viewIsAvailable
         value: {
-            if (!root.viewIsAvailable) {
+            // Screen geometry can be cleared before the view and its visibility
+            // manager are destroyed. During that teardown gap, neither touching
+            // state has coordinates to compare and reading .y causes QML warnings.
+            if (!root.viewIsAvailable || !latteView || !latteView.visibility || !latteView.screenGeometry) {
                 return false;
             }
 
@@ -134,9 +137,9 @@ Item {
     Binding{
         target: latteView
         property: "isTouchingBottomViewAndIsBusy"
-        when: latteView
+        when: root.viewIsAvailable && latteView
         value: {
-            if (!root.viewIsAvailable) {
+            if (!root.viewIsAvailable || !latteView || !latteView.visibility || !latteView.screenGeometry) {
                 return false;
             }
 

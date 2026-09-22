@@ -16,6 +16,8 @@ class SourceContractTest : public QObject
 
 private Q_SLOTS:
     void taskRemovalDefersAnimationOutsideGeometryBindings();
+    void externalTouchingBindingsGuardClearedScreenGeometry();
+    void viewTeardownBindingsGuardClearedVisibility();
     void plasmaVolumeBootstrapContractMovedToQmlSmokeTest();
     void compactAppletPopupSizingContractMovedToQmlSmokeTest();
     void applicationLauncherUsesFixedExternalSlot();
@@ -4397,6 +4399,32 @@ SourceContractTest::taskRemovalDefersAnimationOutsideGeometryBindings()
     QVERIFY(source.contains(QStringLiteral("ListView.onRemove: removalScheduler.schedule()")));
     QVERIFY(source.contains(QStringLiteral("animation: taskRealRemovalAnimation")));
     QVERIFY(source.contains(QStringLiteral("task: taskItem")));
+}
+
+void
+SourceContractTest::externalTouchingBindingsGuardClearedScreenGeometry()
+{
+    QFile bindings(QStringLiteral(LATTE_SOURCE_DIR "/containment/package/contents/ui/BindingsExternal.qml"));
+    QVERIFY(bindings.open(QFile::ReadOnly));
+    const QString source = QString::fromUtf8(bindings.readAll());
+    const QString guard = QStringLiteral("!root.viewIsAvailable || !latteView || !latteView.visibility || !latteView.screenGeometry");
+    QCOMPARE(source.count(guard), 2);
+    QVERIFY(source.contains(QStringLiteral("when: root.viewIsAvailable && latteView")));
+}
+
+void
+SourceContractTest::viewTeardownBindingsGuardClearedVisibility()
+{
+    QFile myView(QStringLiteral(LATTE_SOURCE_DIR "/containment/package/contents/ui/abilities/MyView.qml"));
+    QVERIFY(myView.open(QFile::ReadOnly));
+    const QString myViewSource = QString::fromUtf8(myView.readAll());
+    QVERIFY(myViewSource.contains(QStringLiteral("isReady && view && view.visibility && view.visibility.isHidden")));
+    QVERIFY(myViewSource.contains(QStringLiteral("view && view.visibility ? view.visibility.mode")));
+
+    QFile visibilityManager(QStringLiteral(LATTE_SOURCE_DIR "/containment/package/contents/ui/VisibilityManager.qml"));
+    QVERIFY(visibilityManager.open(QFile::ReadOnly));
+    const QString visibilitySource = QString::fromUtf8(visibilityManager.readAll());
+    QVERIFY(visibilitySource.contains(QStringLiteral("latteView && latteView.visibility && latteView.visibility.isHidden")));
 }
 
 QTEST_MAIN(SourceContractTest)

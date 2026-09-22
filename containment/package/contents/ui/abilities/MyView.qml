@@ -14,8 +14,8 @@ Ability.MyViewPrivate {
     groupId: view ? view.groupId : -1
 
     inNormalState: ((animations.needBothAxis.count === 0) && (animations.needLength.count === 0))
-                                 || (isReady && view.visibility.isHidden && !view.visibility.containsMouse && animations.needThickness.count === 0)
-    isHidden: isReady && view.visibility.isHidden
+                                 || (isReady && view && view.visibility && view.visibility.isHidden && !view.visibility.containsMouse && animations.needThickness.count === 0)
+    isHidden: isReady && view && view.visibility && view.visibility.isHidden
     isShownPartially:  isReady && (inSlidingIn || inSlidingOut)
     isShownFully: isReady && !isHidden && !inSlidingIn && !inSlidingOut
 
@@ -32,7 +32,7 @@ Ability.MyViewPrivate {
 
     alignment: plasmoid.configuration.alignment
     itemsAlignment: plasmoid.configuration.itemsAlignment
-    visibilityMode: isReady ? view.visibility.mode : LatteCore.types.None
+    visibilityMode: view && view.visibility ? view.visibility.mode : LatteCore.types.None
 
     backgroundOpacity: background.currentOpacity
 
@@ -48,5 +48,4 @@ Ability.MyViewPrivate {
     itemShadow.shadowColor: "#" + myView.decimalToHex(myView.itemShadowOpacity) + myView.itemShadowCurrentColor
     itemShadow.shadowSolidColor: "#" + myView.itemShadowCurrentColor
 }
-
 
