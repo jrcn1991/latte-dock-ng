@@ -1,3 +1,24 @@
+## [v1.2.51] - 2026-09-22
+
+### Fixed
+- Keep full-length Latte backgrounds across Plasma panels while placing the
+  overlapping Plasma panel above Latte and moving aligned Latte content clear
+  of the panel. Panel geometry and stacking follow KWin's live per-output
+  state, including multi-monitor layouts.
+- Defer task removal animations until geometry bindings have finished,
+  preventing ParabolicItem and TaskItem binding loops while preserving the
+  established background thickness, zoom, and removal effects.
+- Guard touching-state bindings while a view's screen geometry or visibility
+  state is being cleared during teardown.
+
+### Tests
+- Add geometry, live KWin tracker, and executable QML removal regression tests,
+  covering both orientations, immediate and animated removal, separators,
+  repeated requests, and destruction before a scheduled removal starts.
+- Protect the task background thickness contract and view teardown bindings
+  with focused source-contract checks.
+- GCC and Clang autotest suites pass all 43 registered tests.
+
 ## [v1.2.50] - 2026-09-21
 
 ### Fixed
