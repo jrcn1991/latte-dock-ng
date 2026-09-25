@@ -40,6 +40,12 @@ jobs:
           - distro: debian-testing
             dockerfile: Dockerfile.debian-testing
             format: deb
+          #! Built on the real Ubuntu 26.04 image, so Ubuntu users get a
+          #! package made against their own libraries instead of Debian
+          #! testing's.
+          - distro: ubuntu
+            dockerfile: Dockerfile.ubuntu
+            format: deb
           - distro: arch
             dockerfile: Dockerfile.arch
             format: pkg.tar.zst
@@ -48,7 +54,12 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Set version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+        #! Fork releases are tagged like v1.2.51+cyberkde1. deb and rpm accept
+        #! "+" in the version; Arch's pkgver does not, so it gets "_".
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [ '${{ matrix.format }}' = 'pkg.tar.zst' ]; then VERSION="${VERSION//+/_}"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
@@ -90,6 +101,7 @@ jobs:
                 #! the plain -1 release.
                 DEBREL='1'
                 if [ '${{ matrix.distro }}' = 'debian' ]; then DEBREL='1+deb13u1'; fi
+                if [ '${{ matrix.distro }}' = 'ubuntu' ]; then DEBREL='1~ubuntu26.04'; fi
                 cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\" -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
                 cmake --build . --parallel \$(nproc)
                 #! source-install verification on this distro: the install
@@ -99,7 +111,7 @@ jobs:
                 test -f /usr/share/applications/org.kde.latte-dock.desktop
                 echo SOURCE_INSTALL_OK
                 cpack -G \"\$GEN\"
-                #! The +deb13u1 revision already distinguishes the two deb
+                #! The +deb13u1 and ~ubuntu26.04 revisions distinguish the deb
                 #! variants, so plain copying keeps the names apart.
                 if [ '${{ matrix.format }}' = 'deb' ]; then
                   cp /build/latte-dock-ng_*.deb /out/
