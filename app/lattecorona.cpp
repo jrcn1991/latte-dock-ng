@@ -64,6 +64,7 @@
 #include <QUrl>
 
 // Plasma
+#include <KConfigLoader>
 #include <Plasma/Applet>
 #include <Plasma/Plasma>
 #include <Plasma/Corona>
@@ -1403,6 +1404,49 @@ void Corona::windowColorScheme(QString windowIdAndScheme)
 void Corona::updateDockItemBadge(QString identifier, QString value)
 {
     m_globalShortcuts->updateViewItemBadge(identifier, value);
+}
+
+//! write one applet configuration entry and reload it without restarting anything
+bool Corona::setAppletConfig(uint containmentId, uint appletId, QString group, QString key, QString value)
+{
+    for (const auto containment : containments()) {
+        if (containment->id() != containmentId) {
+            continue;
+        }
+
+        for (const auto applet : containment->applets()) {
+            if (applet->id() != appletId) {
+                continue;
+            }
+
+            //! preferred path: change the value through the applet's config scheme item, exactly
+            //! like the QML Plasmoid.configuration map does. save() only emits configChanged
+            //! when the KConfig is dirty, so the value must be changed through the item.
+            KConfigLoader *scheme = applet->configScheme();
+            KConfigSkeletonItem *item = scheme ? scheme->findItem(group.isEmpty() ? QStringLiteral("General") : group, key) : nullptr;
+            if (scheme && !item) {
+                item = scheme->findItemByName(key);
+            }
+
+            if (item) {
+                item->setProperty(QVariant(value));
+                scheme->save();
+            } else {
+                //! key unknown to the scheme: write the raw entry
+                KConfigGroup cg = applet->config();
+                if (!group.isEmpty()) {
+                    cg = KConfigGroup(&cg, group);
+                }
+                cg.writeEntry(key, value);
+                cg.sync();
+            }
+
+            applet->configChanged();
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void Corona::setAutostart(const bool &enabled)
