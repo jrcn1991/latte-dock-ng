@@ -101,8 +101,8 @@ jobs:
                 #! the plain -1 release.
                 DEBREL='1'
                 if [ '${{ matrix.distro }}' = 'debian' ]; then DEBREL='1+deb13u1'; fi
-                if [ '${{ matrix.distro }}' = 'ubuntu' ]; then DEBREL='1~ubuntu26.04'; fi
-                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\" -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
+                if [ '${{ matrix.distro }}' = 'ubuntu' ]; then DEBREL='1+ubuntu26.04'; fi
+                cmake /src -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF -DVERSION=\"\$VERSION\" -DCPACK_DEBIAN_PACKAGE_RELEASE=\"\$DEBREL\" -DCPACK_RPM_PACKAGE_RELEASE=\"1.${{ matrix.distro }}\" -DLATTE_RPM_PACKAGE_REQUIRES=${{ matrix.rpm_requires }}
                 cmake --build . --parallel \$(nproc)
                 #! source-install verification on this distro: the install
                 #! must land the binary and the desktop file
@@ -111,7 +111,7 @@ jobs:
                 test -f /usr/share/applications/org.kde.latte-dock.desktop
                 echo SOURCE_INSTALL_OK
                 cpack -G \"\$GEN\"
-                #! The +deb13u1 and ~ubuntu26.04 revisions distinguish the deb
+                #! The +deb13u1 and +ubuntu26.04 revisions distinguish the deb
                 #! variants, so plain copying keeps the names apart.
                 if [ '${{ matrix.format }}' = 'deb' ]; then
                   cp /build/latte-dock-ng_*.deb /out/

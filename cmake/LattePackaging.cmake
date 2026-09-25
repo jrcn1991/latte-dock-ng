@@ -48,7 +48,11 @@ set(CPACK_RPM_PACKAGE_NAME "latte-dock-ng")
 # must be re-issued (e.g. a broken package was published), bump the release
 # number first — package managers treat an identical NEVRA as "already
 # installed".
-set(CPACK_RPM_PACKAGE_RELEASE "1")
+# The release workflow passes a per-distro value (1.fedora, 1.opensuse, ...) so
+# the three RPM builds do not overwrite each other in the GitHub release.
+if(NOT DEFINED CPACK_RPM_PACKAGE_RELEASE)
+    set(CPACK_RPM_PACKAGE_RELEASE "1")
+endif()
 set(CPACK_RPM_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
 set(CPACK_RPM_PACKAGE_LICENSE "GPL-3.0-or-later")
 set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION}")

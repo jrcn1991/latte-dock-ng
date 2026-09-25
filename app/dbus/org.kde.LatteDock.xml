@@ -23,6 +23,14 @@
     <method name="setAutostart">
         <arg name="enabled" type="b" direction="in"/>
     </method>
+    <method name="setAppletConfig">
+        <arg name="containmentId" type="u" direction="in"/>
+        <arg name="appletId" type="u" direction="in"/>
+        <arg name="group" type="s" direction="in"/>
+        <arg name="key" type="s" direction="in"/>
+        <arg name="value" type="s" direction="in"/>
+        <arg name="success" type="b" direction="out"/>
+    </method>
     <method name="updateDockItemBadge">
         <arg name="identifier" type="s" direction="in"/>
         <arg name="value" type="s" direction="in"/>

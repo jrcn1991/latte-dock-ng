@@ -183,6 +183,8 @@ public Q_SLOTS:
     //! values are separated with a "-" character
     void windowColorScheme(QString windowIdAndScheme);
     void updateDockItemBadge(QString identifier, QString value);
+    //! write one entry in an applet's [Configuration] (sub)group and ask the applet to reload it live
+    bool setAppletConfig(uint containmentId, uint appletId, QString group, QString key, QString value);
 
     void unload();
 
