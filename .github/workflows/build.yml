@@ -10,6 +10,9 @@ concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build (${{ matrix.name }})
@@ -54,7 +57,7 @@ jobs:
             plasma-workspace-dev plasma-wayland-protocols \
             libwayland-dev liblayershellqtinterface-dev
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
@@ -85,7 +88,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends qt6-declarative-dev qt6-declarative-dev-tools
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Syntax-error gate over every tracked QML file (scripts/qmllint.sh
       # disables all analyzer warnings; only errors fail the run).
@@ -126,7 +129,7 @@ jobs:
             verifier: verify-nix-nixos.sh
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Build ${{ matrix.distro }} verification image
         run: |
@@ -184,7 +187,7 @@ jobs:
             format: deb
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Build ${{ matrix.distro }} packaging image
         run: |

@@ -18,6 +18,7 @@
 #include <QFile>
 #include <QMessageBox>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QSharedPointer>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -384,6 +385,16 @@ Latte::ImportExport::State Factory::importIndicatorFile(QString compressedFile)
     }
 
     KPluginMetaData metadata = readIndicatorMetaData(metadataFile);
+
+    // The plugin id comes from the untrusted archive and becomes a directory name that is
+    // removed and replaced below: reject anything that could escape the indicators folder.
+    static const QRegularExpression safePluginId(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9._-]*$"));
+    if (metadataAreValid(metadata)
+        && (!safePluginId.match(metadata.pluginId()).hasMatch() || metadata.pluginId().contains(QLatin1String("..")))) {
+        qWarning() << "Indicator import rejected, unsafe plugin id:" << metadata.pluginId();
+        showNotificationError();
+        return Latte::ImportExport::FailedState;
+    }
 
     if (metadataAreValid(metadata)) {
         QStringList standardPaths = Latte::Layouts::Importer::standardPaths();
