@@ -9,6 +9,7 @@
 
 #include <QDebug>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QLibraryInfo>
@@ -508,6 +509,21 @@ static bool symlinkChecked(const QString &target, const QString &link)
     return QFile::link(target, link);
 }
 
+//! True only for override folders written by older Latte versions: those mirror the
+//! system modules with symlinks into /usr. A module the user installed there has real
+//! files instead, and must not be deleted.
+static bool isLegacyLatteOverride(const QString &dir)
+{
+    QDirIterator it(dir, QDir::AllEntries | QDir::NoDotAndDotDot | QDir::System, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        const QFileInfo info(it.next());
+        if (info.isSymLink() && info.symLinkTarget().startsWith(QLatin1String("/usr/"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ensureKnsCompat()
 {
     if (qEnvironmentVariableIntValue(kDisableCompatEnv) == 1) {
@@ -528,7 +544,7 @@ void ensureKnsCompat()
                                         oldBase + QStringLiteral("/org/kde/newstuff"),
                                     };
         for (const auto &d : oldDirs) {
-            if (QFile::exists(d + QStringLiteral("/qmldir"))) {
+            if (QFile::exists(d + QStringLiteral("/qmldir")) && isLegacyLatteOverride(d)) {
                 qCDebug(latteApp) << "KnsCompat: removing old overrides from" << d;
                 QDir(d).removeRecursively();
             }
